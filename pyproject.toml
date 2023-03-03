@@ -1,0 +1,18 @@
+[project]
+name = "MC2ACABTools"
+version = "0.1.0"
+authors = [
+   { name = "Miguel Magan", email = "mmagan@essbilbao.org"}
+   { name = "Octavio Gonzalez", email = "ogonzalez@essbilbao.org"}
+]
+description = "Tools for getting MCNP data and generate an ACAB input with it"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: GPL-3",
+    "Operating System :: OS Independent",
+]
+[build-system]
+requires = ["re", "os", "sys", "shutil", "time", "subprocess", "numpy", "hatchling"]
+build-backend = "hatchling.build"
