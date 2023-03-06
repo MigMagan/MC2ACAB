@@ -130,7 +130,6 @@ def get_user_input(outp_name='outp'):
             break
         print(f'Tally {ntal:d} is not here...\n Please, check it and re-enter it:')
 
-    tally.value *= source
     return tally, irr_time, source, Nuc_lib, id_Egroup
 
 
@@ -157,9 +156,9 @@ def collapse(tally, source, **kwargs):
 
     print("*********** RUNNING ESPECTRO-4-ACAB **********")
     print(f"Using tally {tally.n} with total flux {tally.value[cell, surface, cos, t_time, -1]}")
-    print(f"Total N1: {tally.value[cell, surface, cos, t_time, -1]:E}")
-    print(f"Total N2: {tally.value[cell, surface, cos, t_time, -1] * source:E}")
-    print(f"Volume: {tally.mass[cell][surface]:F}")
+    print(f"Total N1: {tally.value[cell, surface, cos, t_time, -1]:.3e} parts/cm2 per source particle ")
+    print(f"Total N2: {tally.value[cell, surface, cos, t_time, -1] * source:.3e} parts/cm2 s")
+    print(f"Volume: {tally.mass[cell][surface]:.3f}")
     print("*********************************************\n")
 
     num_lines = 16 if id_lib == 'EAF' else 32
