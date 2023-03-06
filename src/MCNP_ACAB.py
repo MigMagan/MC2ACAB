@@ -15,163 +15,15 @@ import cell as cel
 import numpy as np
 import tally as tal
 
-print('''
-    ***************************************************************************
-    *              \033[36m ACTIVACION CON PRODUCTOS DE ESPALACION \033[0m                   *
-    * Esta subrutina lee el archivo outp generado por MCNPX, y los productos  *
-    * de espalacion registrados en el archivo histp.                          *
-    * Genera un input para COLLAPS y despues para ACAB, incluyendo los prod.  *
-    * de espalacion. Ejecuta y postprocesa la salida de ACAB.                 *
-    * MIGUEL MAGAN ROMERO     RAUL VIVANCO SANCHEZ    Dr. OCTAVIO GONZALEZ    *
-    *    \033[36m   Grupo de Blancos y Aplicaciones Neutronicas\033[0m                       *
-    *                                        \033[31m ESS-BILBAO \033[0m                     *
-    ***************************************************************************''')
-
-
-if len(sys.argv) == 1:
-    print ('USO: MCNP_ACAB Argumentos [Opciones]')
-    print ('ARGUMENTOS')
-    print ('-outpfile=filename outp file name defatul outp')
-    print ('-st_units=number Indicates the how indicates source term: 1 particles/s or 2 mA')
-    print ('-source_term=number Indicates source term value ')
-    print ('-time=number Indicates irradiation time in hours ')
-    print ('-tally_num = number for specific tallies')
-    print ('-np   Calculo de activacion (Flujo neutronico y modulo histp)')
-    print ('-n    Calculo de activacion (SOLO n, sin modulo histp)')
-    print ('-p    Calculo de activacion (Modulos histp y flujo protonico)')
-    print (' OPCIONES')
-    print ('-Normal_flux Usar flujo normalizado con card FM')
-    print ('-Rotate=n Usar composicion de celdas con celdas pasivas terminadas'
-           ' en n. Para elementos rotatorios No funciona')
-    print ('-EXT_FILE=Archivo   Usar archivo externo de escenario de irradiacion')
-    print ('-save = [All,True,False] Modifica salida de archivos de ACAB_writer'
-           ' y elimina las carpetas tras la ejecución')
-    print ('-corte Indica el corte para Apipa')
-    print ('-decay_times = Set decay times list for ACAB (no spaces)')
-    print ('')
-    sys.exit(1)
-
-#print(sys.argv)
-
-esc_file0 = None
-save0 = True
-passive_sector0 = None
-t_times = None
-corte0 = 0.9
-for arg in sys.argv:
-    if arg == '-Normal_flux':
-        Normal_flux = True
-    if '-EXT_FILE' in arg:
-        esc_file0 = arg.split('=')[1]
-        print("using external scenario file")
-    if  arg == '-np':
-        particles='np'
-    elif  arg == '-n':
-        particles = 'n'
-    elif arg =='-p':
-        particles = 'p'
-    if '-save' in arg:
-        if len(arg.split('='))>=1:
-            save0 = arg.split('=')[1]
-        else:
-            save0 = True
-    if '-Rotate' in arg:
-        str_passive_sector = arg.split('=')[1]
-        passive_sector0 = int(str_passive_sector)
-        print("Using composed results for rotating elements")
-    if '-corte' in arg:
-        corte0 = float(arg.split('=')[-1])
-
-if particles not in ['n','np','p']:
-    print('WARNING!!! type of activation not included')
-    sys.exit(1)
-
-# '''Para hacer una ejecucion automatizable'''
-input_complete = False
-for i, arg_i in enumerate(sys.argv):
-    if '-st_units' in arg_i:
-        for j, arg_j in enumerate(sys.argv):
-            if '-source_term' in arg_j:
-                for k, arg_k in enumerate(sys.argv):
-                    if '-time' in arg_k or '-EXT_FILE' in arg_k:
-                        for l, arg_l in enumerate(sys.argv):
-                            if '-outpfile' in arg_l:
-                                for m, arg_m in enumerate(sys.argv):
-                                    if '-tally_num' in arg_m:
-                                        outpfile = str(arg_l.split('=')[-1])
-                                        while not os.path.exists(str(outpfile)):
-                                            print('Warning!!! No outp file!!! '
-                                                  f'{str(outpfile)} is not here')
-                                            outpfile = input('Enter outp file name: ')
-                                        ntal = int(arg_m.split('=')[-1])
-                                        tally0 = tal.oget(outpfile,ntal)
-                                        if '-EXT_FILE' not in arg_k:
-                                            irr_time0 = float(arg_k.split('=')[-1])*3600
-                                        else:
-                                            irr_time0 = 1 #its a dummy number...
-                                        source0 = float(arg_j.split('=')[-1])
-                                        units = arg_i.split('=')[-1]
-                                        if units == '2':
-                                            source0 *= 6.24E15
-                                        print(f'Termino fuente = {source0:.2e} n/s')
-                                        nuc_lib = 'EAF' # the only one that works in ACAB
-                                        id_Egroup = 'vitJ+' # the only one that works in ACAB
-                                        input_complete = True
-
-if input_complete == False:
-    print('Warning!!! input required! Complete further info: ')
-    if os.path.exists('outp'):
-        outpfile = 'outp'
-    else:
-        outpfile = input('Enter outp file name: ')
-    while not os.path.exists(str(outpfile)):
-        print(f'Warning!!! No outp file!!! {str(outpfile)} is not here \n')
-        outpfile = input('Enter outp file name: ')
-    tally0, irr_time0, source0, nuc_lib, id_Egroup = MCNPACAB.get_user_input(outpfile)
-
-# tally = MCNPACAB.tally_compose(tally0, Passive_sector)
-# cmatrix = MCNPACAB.comp_matrix(tally0, Passive_sector)
-
-for arg in sys.argv:
-    if '-decay_times' in arg and not esc_file0:
-        dec_times = arg.split('=')[-1]
-        t_times = [float(time) for time in dec_times.split(',')]
-        outputs_q = [0]
-        for time in t_times:
-            if float(time) >= 3600:
-                outputs_q.append(1)
-            else:
-                outputs_q.append(0)
-        print('Generating sutomatic scenario file')
-        MCNPACAB.Escenary_generator(irr_time0, t_times, outputs_q, Sce_name ='Auto_Sce_file')
-        esc_file0 = 'Auto_Sce_file'
-
-ncel = [int(cell0) for cell0 in (tally0.cells)]
-print('obtained cell numbers')
-irr_cell = [cel.oget(outpfile,ncell_i) for ncell_i in ncel]
-print('obtained cell properties')
-
-# Because there can be quite a lot of cells with the same material, it is interesting to cache them
-mat=[]
-matnumbers=np.zeros(0)
-for ncell0 in irr_cell:
-    try:
-        Mindex = list(matnumbers).index(ncell0.mat)
-        mat0 = material.mat(mat[Mindex].number)
-        mat0.N = list(mat[Mindex].N)
-        mat0.M = list(mat[Mindex].M)
-        mat.append(mat0)
-    except:
-        mat.append(material.oget(outpfile,ncell0.mat))
-        matnumbers=np.append(matnumbers,mat[-1].number)
-print('obtained materials')
-vol = tally0.mass
-
 def MCNP_ACAB_Mapstar(n):
-    outputs = MCNPACAB.MCNP_ACAB_Map(tally0=tally0,mater=mat[n],irr_cell=irr_cell[n],
-                               irr_time=irr_time0,n_id=n,save=save0,esc_file=esc_file0,
-                               passive_sector=passive_sector0,source=source0,
-                               id_lib=nuc_lib,id_ILIB=id_Egroup,corte=corte0)
+    outputs = MCNPACAB.MCNP_ACAB_Map(tally0 = tally0, mater = mat[n], n_id = n,
+                                     irr_cell = irr_cell[n], irr_time = reqs['-irr_time'],
+                                     irr_type = reqs['-part'], source = reqs['-st'],
+                                     save = options['-save'], esc_file = options['-sce_file'], 
+                                     passive_sector = options['-passive_sector'],
+                                     id_lib =options['-nuc_lib'], 
+                                     id_ILIB = options['-id_Egroup'],
+                                     corte = options['-apypa_verge'])
     # Outputs:
     #     0 Timesets (arrays of times)
     #     1 Decay= Bq as ACAB
@@ -181,16 +33,177 @@ def MCNP_ACAB_Mapstar(n):
     #     5 mol = mol
     return outputs
 
-with Pool(6) as pool:
+print('''
+      ***************************************************************************
+      *  \033[36m SPALLATION PRODUCT ACTIVATION \033[0m                                        *
+      *  This subroutine reads the outp file generated by MCNPX,                *
+      *  and the spallation products recorded in the histp file.                *
+      *  It generates an input for COLLAPS and then for ACAB, including the     *
+      *  spallation products.                                                   *
+      *  It executes and post-processes the output of ACAB.                     *
+      *  MIGUEL MAGAN ROMERO,Dr. OCTAVIO GONZALEZ                               *
+      * \033[36m Targets and Neutronic Applications Group \033[0m                              *
+      *                                             \033[31m ESS-BILBAO \033[0m                *
+      ***************************************************************************''')
+
+if len(sys.argv) <= 1:
+    print ('MCNP2ACAB Arguments [Opcions]')
+    print ('\033[31m Mandatory: \033[0m')
+    print ('-n    Neutron activation (just n, no histp module required)')
+    print ('-p    Calculo de activacion (Modulos histp y flujo protonico)')
+    print ('-np   Calculo de activacion (Flujo neutronico y modulo histp)')
+    print ('\033[36m Requirements \033[0m')
+    print ('-outpfile=filename outp file name defatult outp')
+    print ('-tally_num = number for specific tallies')
+    print ('-st_units=number Indicates the how indicates source term: 1 particles/s or 2 mA')
+    print ('-source_term=number Indicates source term value ')
+    print ('-irr_time=number Indicates irradiation time in hours ')
+    print ('\033[36m Options \033[0m')
+    print('-normal_flux Use normalized flux with FM card')
+    print('-sce_file=File Use external irradiation scenario file')
+    print('-save=[All,True,False] Modify ACAB_writer output files'
+          ' and delete folders after execution')
+    print('-threshold=[0 to 1] Indicates cutoff for Apipa')
+    print('-decay_times=Set decay times list for ACAB (no spaces)')
+    print('-Rotate=n Use cell composition with passive cells'
+          ' terminated in n. Does not work for rotary elements')
+    print ('')
+    sys.exit(1)
+
+# '''Para hacer una ejecucion automatizable'''
+reqs ={
+    '-part': None,
+    '-outpfile': None,
+    '-tally_num': None,
+    '-st_units': None,
+    '-st': None,
+    '-irr_time': None,
+       }
+options = {
+    '-normal_flux': False, # useless??
+    '-save': True,
+    '-sce_file': None,
+    '-apypa_verge' : 0.9,
+    '-decay_times' : None,
+    '-decay_outs' : None,
+    '-passive_sector' : None, # so far useless
+    '-nuc_lib': 'EAF', 
+    '-id_Egroup': 'vitJ+', 
+}
+def __parse_args(reqs, options, args):
+    for arg in args:
+        if  arg == '-np' and reqs['-part'] == None:
+            reqs['-part'] = 'np'
+        elif  arg == '-n' and reqs['-part'] == None:
+            reqs['-part'] = 'n'
+        elif arg =='-p' and reqs['-part'] == None:
+            reqs['-part'] = 'p'
+        elif arg.startswith('-outpfile='):
+            reqs['-outpfile'] = arg.split('=')[1]
+        elif arg.startswith('-tally_num='):
+            reqs['-tally_num'] = arg.split('=')[1]
+        elif arg.startswith('-st_units='):
+            reqs['-st_units'] = arg.split('=')[1]
+            while reqs['-st_units'] not in ['1','2']:
+                reqs['-st_units'] = input('Warning!!! just 1 or 2:')
+        elif arg.startswith('-source_term='):
+            reqs['-st'] = float(arg.split('=')[1])
+        elif arg.startswith('-irr_time='):
+            reqs['-irr_time'] = float(arg.split('=')[1]) * 3600
+        elif '-normal_flux' in arg:
+            options['-normal_flux'] = True
+        elif arg.startswith('-sce_file='):
+            options['-sce_file'] = arg.split('=')[1]
+            while not os.path.exists(options['-sce_file']):
+                options['-sce_file'] = input('Warning!!! No scenenario file!!!'
+                                             f" {options['-sce_file']} is not here"
+                                             '\nEnter scenario file name: ')
+        elif arg.startswith('-threshold='):
+            options['-apypa_verge'] = float(arg.split('=')[1])
+        elif arg.startswith('-decay_times='):
+            dec_times = arg.split('=')[1]
+            options['-decay_times'] = [float(time) for time in dec_times.split(',')]
+            options['-decay_outs'] = [0]
+            for time in options['-decay_times']:
+                if float(time) >= 3600:
+                    options['-decay_outs'].append(1)
+                else:
+                    options['-decay_outs'].append(0)
+        # elif arg.startswith('-decay_outs='):
+        #     dec_outs = arg.split('=')[1]
+        #     options['-decay_outs'] =[int(out) for out in dec_outs.split(',')]
+        #     while not all options['-decay_outs'] in [0,1]:
+        #         dec_outs = input('-decay outs must be a list of 0 (no output) or 1 (output) and must start with a 0')
+        #         options['-decay_outs'] =[int(out) for out in dec_outs.split(',')] 
+        elif arg.startswith('-rotate='):
+            options['-passive_sector='] = int(arg.split('=')[1])
+        elif arg.startswith('-nuc_lib='):
+            options['-nuc_lib'] = arg.split('=')[1]
+        elif arg.startswith('-id_Egroup='):
+            options['-id_Egroup'] = arg.split('=')[1]
+    # print(reqs)
+    # print(options)
+    while reqs['-part'] not in ['n','np','p']:
+        print('WARNING!!! Unknown activation process')
+        reqs['-part'] = input('Indicate activation process type')
+    if os.path.exists('outp') and not reqs['-outpfile']:
+        reqs['-outpfile'] = 'outp'
+    elif not reqs['-outpfile']:
+        reqs['-outpfile'] = input('Enter outp file name: ')
+    while not os.path.exists(reqs['-outpfile']):
+        reqs['-outpfile'] = input(f"Warning!!! No outp file!!! {reqs['-outpfile']}"
+                                  ' is not here \nEnter outp file name: ')
+    if reqs['-st_units'] == '2':
+        reqs['-st'] *= 6.24E15
+    if None in reqs.values():
+        raise ValueError('Warning!!! input incomplete, further information required:')
+    if not options['-sce_file'] and options['-decay_times']:
+        print('Generating automatic scenario file')
+        MCNPACAB.Escenary_generator(reqs['-irr_time'], options['-decay_times'],
+                                    options['-decay_outs'], Sce_name ='Auto_Sce_file')
+        options['-sce_file'] = 'Auto_Sce_file'
+    return reqs, options
+
+try:
+    reqs, options = __parse_args(reqs, options, sys.argv[1:])
+    print(f'source_term = {reqs["-st"]:.3e} n/s')
+    input_complete = True
+    tally0 = tal.oget(reqs['-outpfile'],reqs['-tally_num'])
+except Exception as e:
+    print(e)
+    tally0, reqs['-irr_time'], reqs['-st'], options['-nuc_lib'], options['-id_Egroup'] = MCNPACAB.get_user_input(reqs['-outpfile'])
+#TODO
+# tally = MCNPACAB.tally_compose(tally0, Passive_sector)
+# cmatrix = MCNPACAB.comp_matrix(tally0, Passive_sector)
+ncel = [int(cell0) for cell0 in (tally0.cells)]
+print('Obtained cell numbers')
+vol0 = tally0.mass
+irr_cell = [cel.oget(reqs['-outpfile'],ncell_i) for ncell_i in ncel]
+print('Obtained cell properties')
+# Because there can be quite a lot of cells with the same material, it is interesting to cache them
+mat = []
+matnumbers = np.zeros(0)
+for ncell0 in irr_cell:
+    try:
+        Mindex = list(matnumbers).index(ncell0.mat)
+        mat0 = material.mat(mat[Mindex].number)
+        mat0.N = list(mat[Mindex].N)
+        mat0.M = list(mat[Mindex].M)
+        mat.append(mat0)
+    except:
+        mat.append(material.oget(reqs['-outpfile'],ncell0.mat))
+        matnumbers=np.append(matnumbers,mat[-1].number)
+print('Obtained materials')
+
+with Pool() as pool:
     totaldata = pool.map(MCNP_ACAB_Mapstar, range(tally0.ncells))
 
-if not t_times:
+if not options['-decay_times']:
     t_times = list(totaldata[0][0].index)
 else:
     o_times = [1.0]
-    for time in t_times:
+    for time in options['-decay_times']:
         if time in list(totaldata[0][0].index) and time not in o_times:
             o_times.append(time)
     t_times = o_times
-
-MCNPACAB.summary_table_gen(totaldata,tally0,t_times) # generates summary table for shorter time
+MCNPACAB.summary_table_gen(totaldata,tally0,t_times)
