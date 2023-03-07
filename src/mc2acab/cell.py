@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # coding: utf-8
 import re
-import MCNP_outparser
+from . import MCNP_outparser
 # from pylab import *
 
 def __is_number(s):

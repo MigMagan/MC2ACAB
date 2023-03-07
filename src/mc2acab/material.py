@@ -5,7 +5,7 @@
 
 # import re
 import numpy as np
-import MCNP_outparser
+from . import MCNP_outparser
 from pyhtape3x import atomic_mass
 
 def is_number(string):
