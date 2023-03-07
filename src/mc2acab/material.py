@@ -6,7 +6,7 @@
 # import re
 import numpy as np
 from . import MCNP_outparser
-from pyhtape3x import atomic_mass
+from .pyhtape3x import atomic_mass
 
 def is_number(string):
     '''Check if a number is a number'''
