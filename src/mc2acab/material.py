@@ -96,7 +96,7 @@ def oget(infile, number):
         print(f"material {number} not found")
         return None
     line = inputlines[init_M]
-    while line[:5] == ' ' * 5 :
+    while line[0] in ["c", "C", " "]:
         tokens = MCNP_outparser.line_parser(line)
         m_info.extend(tokens)
         init_M += 1
