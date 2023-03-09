@@ -11,9 +11,9 @@ import sys
 import shutil
 import numpy as np
 import pandas as pd
-import pyhtape3x
 import apypa
 import tally as tal
+from . import pyhtape3x
 
 
 def __is_number(s):
