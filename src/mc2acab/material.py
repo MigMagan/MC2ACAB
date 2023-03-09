@@ -66,7 +66,7 @@ class Mat:
     def normalize(self):
         """Normalize the fractions to 1, either positive or negative"""
         totalfract = sum(self.frac)
-        self.frac = [m/totalfract for m in self.frac]*np.sign(totalfract)
+        self.frac = [m/totalfract*np.sign(totalfract) for m in self.frac]
 
     def __eq__(self,other):
         ''' __eq__ overload to compare isotopes and compositions '''
