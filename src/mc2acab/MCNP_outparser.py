@@ -41,6 +41,25 @@ def line_parser(line):
             tokens.append(token) # comment
     return tokens
 
+def __interval_unfold(tokenlist, token_type=float):
+    """"Unfold a list of intervals in the shape
+    X ni Y. Does this for all intervals found in tokenlist 
+    token_type indicate the type of tokens used. It is float by default, use
+    ints to get the interval unfolded as integers. BEWARE, it does not check
+    validity"""
+    uf_tokenlist=[]
+    for i, token in enumerate(tokenlist):
+        if re.match("(\d+)i", token, re.IGNORECASE):
+            n = int(token[:-1])+1  # Not very happy with this, would rather use the Match object
+            starti = token_type(tokenlist[i-1])
+            stopi = token_type(tokenlist[i+1])
+            ilist =[str(starti + (stopi-starti)//n*(j+1)) for j in range(n-1)]
+            uf_tokenlist.extend(ilist)
+        else:
+            uf_tokenlist.append(token)
+    return uf_tokenlist
+
+
 def __build_TR(tokens):
     """Internal to build a TR Matrix using the tokens from the TR Card, taking into
     account the multiple cases possible"""
@@ -114,3 +133,26 @@ def get_TR(trID, outpinfile):
                 tokens.extend(line_parser(in_outp[l_fmesh+1+j]))
                 j += 1
     return __build_TR(tokens)
+
+def get_histpcells(outpinfile):
+    '''Look into an outp file for histp entry and return the cell array'''
+    in_outp = input_finder(outpinfile)
+    tokens = []
+    for i, line in enumerate(in_outp):
+        if re.match('histp', line, re.IGNORECASE):
+            l_histp = i
+            j = 0
+            tokens.extend(line_parser(in_outp[l_histp])[1:])
+            while in_outp[l_histp+1+j].startswith((' '*5, 'c', 'C')):
+                tokens.extend(line_parser(in_outp[l_histp+1+j]))
+                j += 1
+    while '' in tokens:
+        tokens.remove('')
+    if not tokens:
+        print("Card HISTP not found")
+        return []
+    if int(tokens[0]) < 0:
+        tokens.pop(0)
+    uf_tokens = __interval_unfold(tokens, token_type=int)
+    histp_cells = array(uf_tokens,dtype=int)
+    return histp_cells
