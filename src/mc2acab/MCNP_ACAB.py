@@ -206,4 +206,4 @@ else:
         if time in list(totaldata[0][0].index) and time not in o_times:
             o_times.append(time)
     t_times = o_times
-MCNPACAB.summary_table_gen(totaldata,tally0,t_times)
+MCNPACAB.summary_table_gen(totaldata, tally0, t_times=t_times)
