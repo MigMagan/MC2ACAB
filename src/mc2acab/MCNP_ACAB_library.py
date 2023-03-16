@@ -350,6 +350,7 @@ def create_inp(flux,irr_time,mat,vol,**kwargs):
 def MCNP_ACAB_Map(**kwargs):
     #tally0,mater,irr_cell,irr_time,irr_type,n_id,save,esc_file,passive_sector,source,id_lib,id_ILIB,corte):
     '''Assistant to carry ouy MCNP_ACAB calculations'''
+    feeds = None  # Default value
     start_time = time.time()
     tally0 = kwargs.get('tally0')
     mater = kwargs.get('mater')
