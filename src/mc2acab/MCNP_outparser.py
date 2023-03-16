@@ -68,8 +68,6 @@ def __build_TR(tokens):
     if '*' in tokens[0]:
         for i, token in enumerate(tokens[4:13]):
             tokens[i+4] = f'{cos(radians(float(token))):.4f}' # to convert from angles to cosene of the angles
-    print (len(tokens))
-    print(tokens)
     match len(tokens):
         case 4:  # Pure traslation
             TR = array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [float(tk) for tk in tokens[0:3]]])
@@ -115,7 +113,6 @@ def __build_TR(tokens):
             TR[1:4] = transpose([TRxv, TRyv, TRzv])
     if len(tokens) == 14:
         if tokens[13] == '-1':
-            print(TR[1:4])
             TR[0] = matmul(linalg.inv(TR[1:4]),TR[0])
     return TR
 
