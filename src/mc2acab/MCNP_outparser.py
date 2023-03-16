@@ -132,7 +132,10 @@ def get_TR(trID, outpinfile):
             while in_outp[l_fmesh+1+j].startswith(' '*5):
                 tokens.extend(line_parser(in_outp[l_fmesh+1+j]))
                 j += 1
-    return __build_TR(tokens)
+            return __build_TR(tokens)
+    else:
+        print(f"TR card {trID} not found")
+        return array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
 def get_histpcells(outpinfile):
     '''Look into an outp file for histp entry and return the cell array'''
