@@ -422,7 +422,7 @@ def MCNP_ACAB_Map(**kwargs):
         os.symlink("../histp", "./histp") 
         os.system("htape3x int=RSH outt=RES_H")
         feeds=pyhtape3x.get_atom_feed(irr_cell.ncell,"RES_H")
-        feeds[1][:]=[source*i for i in feeds[1]]
+        feeds[2][:]=[source/6.023E23*i for i in feeds[2]]
 
     collapse(tally0, source, id_lib=id_lib, id_ilib=id_ILIB, cell=n_id)
     create_inp(flux,irr_time,mater,vol,sce_file=sce_file0,feeds=feeds)
