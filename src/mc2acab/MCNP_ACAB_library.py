@@ -467,25 +467,25 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
     panda_item = np.dtype([('cell',int),('vol',float),('decay',object),
                           ('gamma',object),('heat',object),('dose',object),('mol',object)])
     apypas = np.zeros(len(totaldata_ACAB), dtype=panda_item)
-    for i, pd_list in enumerate(totaldata_ACAB):
-        if pd_list != None:
-            apypas[i] = tally.cells[i], tally.mass[i], pd_list[0], pd_list[1], pd_list[2], pd_list[3], pd_list[4]
-            totals = pd.DataFrame()
-            totals.index.name = f'Cell:{tally.cells[i]} Vol:{float(tally.mass[i]):.2e}'
-            for panda in pd_list:
-                if 'Total' in panda.columns:
-                    totals[f'Total_{panda.columns.name}'] = panda['Total']
-                else:
-                    totals[f'Total_{panda.columns.name}'] = panda.T['Total']
-            totalsT = totals.T
-            for time_i in totalsT.columns:
-                if time_i not in t_times:
-                    totalsT = totalsT.drop(columns = time_i)
-            totals = totalsT.T
-            totals = totals.round(3)
-            totals = totals.applymap('{:.3e}'.format)
-            if save == True:
-                totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
     np.save('summary_apypas',apypas)
+    if save == True:
+        for i, pd_list in enumerate(totaldata_ACAB):
+            if pd_list != None:
+                apypas[i] = tally.cells[i], tally.mass[i], pd_list[0], pd_list[1], pd_list[2], pd_list[3], pd_list[4]
+                totals = pd.DataFrame()
+                totals.index.name = f'Cell:{tally.cells[i]} Vol:{float(tally.mass[i]):.2e}'
+                for panda in pd_list:
+                    if 'Total' in panda.columns:
+                        totals[f'Total_{panda.columns.name}'] = panda['Total']
+                    else:
+                        totals[f'Total_{panda.columns.name}'] = panda.T['Total']
+                totalsT = totals.T
+                for time_i in totalsT.columns:
+                    if time_i not in t_times:
+                        totalsT = totalsT.drop(columns = time_i)
+                totals = totalsT.T
+                totals = totals.round(3)
+                totals = totals.applymap('{:.3e}'.format)
+                totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
     return apypas
     # apypas = np.load('summary_apypas.npy', allow_pickle=True)
