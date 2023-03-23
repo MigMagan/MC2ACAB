@@ -444,7 +444,6 @@ def MCNP_ACAB_Map(**kwargs):
 # Calculamos el tiempo de ejecución
     elapsed_time=time.time()-start_time
 # Escribimos la linea en el log
-    __backup_previous('logfile.txt')
     with open('logfile.txt','a', encoding='utf-8') as logfile:
         line = [f'cell/voxel={Wdir}/{irr_cell.ncell}',f'vol={vol:.2e}ccm', f'ro={irr_cell.density*-1:.2f}g/ccm', 
                 f'SourceTerm={source/6.24E15:.3e}mA',f'NeutronFlux={flux:.2e}part/s',

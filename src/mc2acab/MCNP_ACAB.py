@@ -16,6 +16,9 @@ import numpy as np
 import tally as tal
 
 def MCNP_ACAB_Mapstar(n):
+    with open('logfile.txt','w', encoding='utf-8') as logfile:
+        logfile.write(' '.join([f'{str(item)}:{reqs[item]}' for item in reqs]))
+        logfile.write('\n')
     outputs = MCNPACAB.MCNP_ACAB_Map(tally0 = tally0, mater = mat[n], n_id = n,
                                      irr_cell = irr_cell[n], irr_time = reqs['-irr_time'],
                                      irr_type = reqs['-part'], source = reqs['-st'],
@@ -195,6 +198,7 @@ for ncell0 in irr_cell:
         matnumbers=np.append(matnumbers,mat[-1].number)
 print('Obtained materials')
 
+MCNPACAB.__backup_previous('logfile.txt')
 with Pool() as pool:
     totaldata = pool.map(MCNP_ACAB_Mapstar, range(tally0.ncells))
 
