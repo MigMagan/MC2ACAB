@@ -96,7 +96,7 @@ def ogetall(infile):
             continue
         if lines[0]==' ':
             continue
-        if tokens[0] =="\n":
+        if all([tok == '' for tok in tokens]):
             nlines.append(i+1)
             break
         nlines.append(i+1)  # since we skipped the 1st title line
