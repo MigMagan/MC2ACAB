@@ -195,6 +195,14 @@ for ncell0 in irr_cell:
         matnumbers=np.append(matnumbers,mat[-1].number)
 print('Obtained materials')
 
+MCNPACAB.__backup_previous('logfile.txt')
+with open('logfile.txt','w', encoding='utf-8') as logfile:
+    logfile.write(' '.join([f'{str(item)}:{reqs[item]}' for item in reqs if item not in ['-st_units']]))
+    logfile.write(f" -sce_file_n:{options['-sce_file_n']}")
+    logfile.write(f" -sce_file_np:{options['-sce_file_np']}")
+    logfile.write('\n')
+    logfile.close()
+
 with Pool() as pool:
     totaldata = pool.map(MCNP_ACAB_Mapstar, range(tally0.ncells))
 

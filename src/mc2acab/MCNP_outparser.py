@@ -68,8 +68,6 @@ def __build_TR(tokens):
     if '*' in tokens[0]:
         for i, token in enumerate(tokens[4:13]):
             tokens[i+4] = f'{cos(radians(float(token))):.4f}' # to convert from angles to cosene of the angles
-    print (len(tokens))
-    print(tokens)
     match len(tokens):
         case 4:  # Pure traslation
             TR = array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [float(tk) for tk in tokens[0:3]]])
@@ -115,7 +113,6 @@ def __build_TR(tokens):
             TR[1:4] = transpose([TRxv, TRyv, TRzv])
     if len(tokens) == 14:
         if tokens[13] == '-1':
-            print(TR[1:4])
             TR[0] = matmul(linalg.inv(TR[1:4]),TR[0])
     return TR
 
@@ -132,7 +129,10 @@ def get_TR(trID, outpinfile):
             while in_outp[l_fmesh+1+j].startswith(' '*5):
                 tokens.extend(line_parser(in_outp[l_fmesh+1+j]))
                 j += 1
-    return __build_TR(tokens)
+            return __build_TR(tokens)
+    else:
+        print(f"TR card {trID} not found")
+        return array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
 def get_histpcells(outpinfile):
     '''Look into an outp file for histp entry and return the cell array'''

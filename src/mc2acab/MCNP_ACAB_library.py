@@ -11,6 +11,7 @@ import os
 import sys
 import shutil
 import re
+import datetime
 import numpy as np
 import pandas as pd
 import apypa
@@ -50,6 +51,14 @@ def __display_time(seconds, granularity=2):
     if not result:
         result.append('Shutdown')
     return '+'.join(result[:granularity])
+
+def __backup_previous(item):
+    ''' Check if a file exits and changes its name to save it from being overwrite'''
+    if os.path.exists(item):
+        date = datetime.datetime.now()
+        name_id=str(date.strftime("%Y%m%d%H%M%S"))
+        os.replace(item,f'{item}_bk_{name_id}')
+        print(f"\nBacking up existing {item} as {item}_bk_{name_id}")
 
 def __get_user_source():
     print('Calculation of source intensity:')
@@ -374,10 +383,7 @@ def MCNP_ACAB_Map(**kwargs):
     if flux == 0:
         print("null tally")
         return None
-    if os.path.exists(Wdir):
-        name_id=str(id(Wdir))
-        os.replace(Wdir,Wdir+"_bk_"+name_id)
-        print("\nBacking up existing calculation as "+Wdir+"_bk_"+name_id)
+    __backup_previous(Wdir)
     os.mkdir(Wdir)
     os.chdir(Wdir)
     if sce_file0 is not None:
@@ -388,7 +394,6 @@ def MCNP_ACAB_Map(**kwargs):
     mater.zaid[:] = [10*i for i in matfixed_zaid] # Fix material with nat abundance AND add excited state info
     mater.frac[:] = list(matfixed_frac)
     vol = tally0.mass[n_id, 0]
-#    print(mater.zaid,mater.frac)
      # Parte de enlazar *.dat
     DatFiles=["DHEAT.dat","FYBL.dat","af_asscfy.dat","PHOTON.dat","MACOEF.dat","EBEATA.dat","DECAY.dat","WD.dat"]
     Dat_origin_Files=[]
@@ -477,25 +482,29 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
     panda_item = np.dtype([('cell',int),('vol',float),('decay',object),
                           ('gamma',object),('heat',object),('dose',object),('mol',object)])
     apypas = np.zeros(len(totaldata_ACAB), dtype=panda_item)
+    __backup_previous('summary_apypas.npy')
     for i, pd_list in enumerate(totaldata_ACAB):
         if pd_list != None:
             apypas[i] = tally.cells[i], tally.mass[i], pd_list[0], pd_list[1], pd_list[2], pd_list[3], pd_list[4]
-            totals = pd.DataFrame()
-            totals.index.name = f'Cell:{tally.cells[i]} Vol:{float(tally.mass[i]):.2e}'
-            for panda in pd_list:
+    np.save('summary_apypas',apypas)
+    for voxel in apypas:
+        totals = pd.DataFrame()
+        totals.index.name = f'Cell:{voxel[0]} Vol:{float(voxel[1]):.2e}'
+        for panda in list(voxel)[2:]:
+            if isinstance(panda,pd.DataFrame):
                 if 'Total' in panda.columns:
                     totals[f'Total_{panda.columns.name}'] = panda['Total']
                 else:
                     totals[f'Total_{panda.columns.name}'] = panda.T['Total']
-            totalsT = totals.T
-            for time_i in totalsT.columns:
-                if time_i not in t_times:
-                    totalsT = totalsT.drop(columns = time_i)
-            totals = totalsT.T
-            totals = totals.round(3)
-            totals = totals.applymap('{:.3e}'.format)
-            if save == True:
-                totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
-    np.save('summary_apypas',apypas)
-    return apypas
+        totalsT = totals.T
+        for time_i in totalsT.columns:
+            if time_i not in t_times:
+                totalsT = totalsT.drop(columns = time_i)
+        totals = totalsT.T
+        totals = totals.round(3)
+        totals = totals.applymap('{:.3e}'.format)
+        __backup_previous('summary_ACAB_{tally.cells[i]}.csv')
+        if save == True:
+            totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
     # apypas = np.load('summary_apypas.npy', allow_pickle=True)
+    return apypas
