@@ -50,7 +50,7 @@ def __display_time(seconds, granularity=2):
         result.append('Shutdown')
     return '+'.join(result[:granularity])
 
-def __backup_previous(item):
+def backup_previous(item):
     ''' Check if a file exits and changes its name to save it from being overwrite'''
     if os.path.exists(item):
         date = datetime.datetime.now()
@@ -58,7 +58,7 @@ def __backup_previous(item):
         os.replace(item,f'{item}_bk_{name_id}')
         print(f"\nBacking up existing {item} as {item}_bk_{name_id}")
 
-def __get_user_source():
+def get_user_source():
     print('Calculation of source intensity:')
     print('1: Source term units in particles per second (part/s):')
     print('2: Source term units in mA (miliAmperes): ')
@@ -74,7 +74,7 @@ def __get_user_source():
         print(f'Source term = {source:.2E} n/s')
     return source
 
-def __get_user_time():
+def get_user_time():
     user_input = input('Enter irradiation time in hours: ')
     try:
         irr_time = float(user_input) * 3600  # convert to seconds
@@ -83,7 +83,7 @@ def __get_user_time():
         sys.exit(1)
     return irr_time
 
-def __get_user_LIB():
+def get_user_LIB():
     while True:
         Nuc_lib = input('Enter the Nuclear library (Default = EAF): ')
         if Nuc_lib in ['EAF','']:
@@ -110,9 +110,9 @@ def get_user_input(outp_name='outp'):
         print('outp file not found')
         sys.exit(1)
 
-    source = __get_user_source()
-    irr_time = __get_user_time()
-    Nuc_lib, id_Egroup = __get_user_LIB()
+    source = get_user_source()
+    irr_time = get_user_time()
+    Nuc_lib, id_Egroup = get_user_LIB()
 
     with open(outp_name,'r', encoding='utf-8') as datafile:
         nps_list = []
@@ -382,7 +382,7 @@ def MCNP_ACAB_Map(**kwargs):
     if flux == 0:
         print("null tally")
         return None
-    __backup_previous(Wdir)
+    backup_previous(Wdir)
     os.mkdir(Wdir)
     os.chdir(Wdir)
     if sce_file0 is not None:
@@ -472,7 +472,7 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
     panda_item = np.dtype([('cell',int),('vol',float),('decay',object),
                           ('gamma',object),('heat',object),('dose',object),('mol',object)])
     apypas = np.zeros(len(totaldata_ACAB), dtype=panda_item)
-    __backup_previous('summary_apypas.npy')
+    backup_previous('summary_apypas.npy')
     for i, pd_list in enumerate(totaldata_ACAB):
         if pd_list != None:
             apypas[i] = tally.cells[i], tally.mass[i], pd_list[0], pd_list[1], pd_list[2], pd_list[3], pd_list[4]
@@ -493,7 +493,7 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
         totals = totalsT.T
         totals = totals.round(3)
         totals = totals.applymap('{:.3e}'.format)
-        __backup_previous('summary_ACAB_{tally.cells[i]}.csv')
+        backup_previous('summary_ACAB_{tally.cells[i]}.csv')
         if save == True:
             totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
     # apypas = np.load('summary_apypas.npy', allow_pickle=True)
