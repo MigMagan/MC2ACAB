@@ -8,6 +8,8 @@ import subprocess
 import time
 import os
 import sys
+from contextlib import redirect_stdout
+from io import StringIO
 import shutil
 import datetime
 import numpy as np
@@ -213,7 +215,7 @@ def collapse(tally, source, **kwargs):
     if not os.path.isfile('XSBL.dat'):
         os.symlink(f"{os.environ['ACAB_LB_PATH']}eaf_n_gxs_211_flt_20070", 'XSBL.dat')
     print("*********** RUNNING COLLAPS **********")
-    subprocess.run(['collaps_2008'], check=True)
+    subprocess.run(['collaps_2008'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 
 def Escenary_generator(irr_time, cooling_times, outputs, **kwargs):
@@ -243,7 +245,7 @@ def Escenary_generator(irr_time, cooling_times, outputs, **kwargs):
     for i, ctime in enumerate(cooling_times):
         inputfile += f"\n< Bloque de decaimiento {i}\n"
         if ctime < 1000:
-            isend = 0 if ctime == cooling_times[-1] else 1 
+            isend = 0 if ctime == cooling_times[-1] else 1
             inputfile += f"0  1  {isend}  {prev_nsteps}  1  0  0  0\n"
             inputfile += f"{ctime:.3E}"
             prev_nsteps = 1
@@ -269,7 +271,7 @@ def Escenary_generator(irr_time, cooling_times, outputs, **kwargs):
     # Card #7
     inputfile += ' '.join(['1'] * j_total)
     # No Card #8 and this is neutron problem, no BLOCK #12
-    inputfile += "\n0\n" # Just a 0... 
+    inputfile += "\n0\n" # Just a 0...
     # BLOCK 13
     # Card 1 NCYO IFSO
     inputfile += "0 1\n"
@@ -324,7 +326,7 @@ def create_inp(flux,irr_time,mat,vol,**kwargs):
         Elist = ['2.0e+01', '1.4e+01', '1.2e+01', '1.0e+01', '8.0e+00', '6.5e+00',
                  '5.0e+00', '4.0e+00', '3.0e+00', '2.5e+00', '2.0e+00', '1.7e+00',
                  '1.4e+00', '1.2e+00', '1.0e+00', '8.0e-01', '6.0e-01', '4.0e-01',
-                 '3.0e-01', '2.0e-01', '1.0e-01', '5.0e-02', '2.0e-02', '1.0e-02', 
+                 '3.0e-01', '2.0e-01', '1.0e-01', '5.0e-02', '2.0e-02', '1.0e-02',
                  '0.0e+00']
         inputfile.write('\n'.join([', '.join(Elist[i:i+8]) for i in range(0,len(Elist), 8)]))
         inputfile.write('\n')
@@ -371,16 +373,16 @@ def MCNP_ACAB_Map(**kwargs):
     passive_sector = None  # No se ha implementado la rotacion para cilindricos...
     id_lib = kwargs.get('id_lib', 'EAF') # the only one that works in ACAB
     id_ILIB = kwargs.get('id_ILIB', 'vitJ+') # the only one that works in ACAB
-    corte = kwargs.get('corte', 1E-2) 
+    corte = kwargs.get('corte', 1E-2)
     print('particles: ',irr_type)
     Wdir = str(irr_cell.ncell)
     print(f"doing cell {irr_cell.ncell}")
     flux = tally0.value[n_id, 0, 0, 0, -1]*source
     if not mater.zaid:
-        print("null material")
+        print(f"doing cell {irr_cell.ncell} null material")
         return None
     if flux == 0:
-        print("null tally")
+        print(f"doing cell {irr_cell.ncell} null tally")
         return None
     backup_previous(Wdir)
     os.mkdir(Wdir)
@@ -400,9 +402,9 @@ def MCNP_ACAB_Map(**kwargs):
         dfile = os.environ["ACAB_LB_PATH"]+datfile
         Dat_origin_Files.append(dfile)
     Dat_origin_Files[1] = os.environ["ACAB_LB_PATH"]+"eaf_n_fis_20070"
-    Dat_origin_Files[2] = os.environ["ACAB_LB_PATH"]+"eaf_n_asscfy_20070" 
+    Dat_origin_Files[2] = os.environ["ACAB_LB_PATH"]+"eaf_n_asscfy_20070"
     for index,datfile in enumerate(DatFiles):
-        if not os.path.isfile(datfile):    
+        if not os.path.isfile(datfile):
             os.symlink(Dat_origin_Files[index],datfile)
 #    print('\033[31m flux {0}, tally_ncel {1}, n {2}\033[0m'.format(tally.value[n][-1],tally.cells[n],n))
     if irr_type == 'n':
@@ -410,7 +412,7 @@ def MCNP_ACAB_Map(**kwargs):
         create_inp(flux, irr_time, mater, vol, sce_file=sce_file0)
     elif(irr_type == 'p'):
         # Introducimos el archivo de librerias que debe leer collapse para que lea protones
-        os.system("ln -s $ACAB_LB_PATH"+'eaf_p_gxs_211_flt_20070'+" ./XSBL.dat")        
+        os.system("ln -s $ACAB_LB_PATH"+'eaf_p_gxs_211_flt_20070'+" ./XSBL.dat")
         collapse(tally0, source, id_lib=id_lib, id_ilib=id_ILIB, cell=n_id)
         feeds0 = pyhtape3x.histp_feeding(irr_cell,passive_sector,source)
         create_inp(flux,irr_time,mater,vol,sce_file=sce_file0,feeds=feeds0)
@@ -424,12 +426,14 @@ def MCNP_ACAB_Map(**kwargs):
         return None
     print("*********** RUNNING ACAB 2008 **********")
     subprocess.run('acab_2008',check=True)
-    heat = apypa.heat_isotopes_full_pd("fort.6",threshold = corte) 
-    gamma = apypa.gammas_full_pd("fort.6")
-    dose = apypa.gamma_dose_isotopes_full_pd("fort.6", threshold = corte)
-    # timesets = apypa.get_time_sets('fort.6')
-    decay = apypa.rad_act_isotopes_full_pd('fort.6', threshold = corte)
-    mol = apypa.iso_mol('fort.6', threshold = corte)
+    ignore_outputs = StringIO()
+    with redirect_stdout(ignore_outputs):
+        heat = apypa.heat_isotopes_full_pd("fort.6",threshold = corte)
+        gamma = apypa.gammas_full_pd("fort.6")
+        dose = apypa.gamma_dose_isotopes_full_pd("fort.6", threshold = corte)
+        # timesets = apypa.get_time_sets('fort.6')
+        decay = apypa.rad_act_isotopes_full_pd('fort.6', threshold = corte)
+        mol = apypa.iso_mol('fort.6', threshold = corte)
     if save in  ['All','all']:
         os.chdir(os.pardir)
     elif save == True:
@@ -445,7 +449,7 @@ def MCNP_ACAB_Map(**kwargs):
     elapsed_time=time.time()-start_time
 # Escribimos la linea en el log
     with open('logfile.txt','a', encoding='utf-8') as logfile:
-        line = [f'cell/voxel={Wdir}/{irr_cell.ncell}',f'vol={vol:.2e}ccm', f'ro={irr_cell.density*-1:.2f}g/ccm', 
+        line = [f'cell/voxel={Wdir}/{irr_cell.ncell}',f'vol={vol:.2e}ccm', f'ro={irr_cell.density*-1:.2f}g/ccm',
                 f'SourceTerm={source/6.24E15:.3e}mA',f'NeutronFlux={flux:.2e}part/s',
                 f'IrrTime={__display_time(irr_time,3)}', f'Run=-{str(irr_type)}',
                 f'Time={elapsed_time//60:.0f}m {elapsed_time%60:.2f}s']
@@ -456,8 +460,8 @@ def MCNP_ACAB_Map(**kwargs):
     #     1 decay= Bq as ACAB
     #     2 gamma= PHOTONS/CCM/SEC (as ACAB)
     #     3 heat= W/cm3
-    #     4 dose= mSv/h (ACAB is Sv/h) 
-    #     5 mol = mol 
+    #     4 dose= mSv/h (ACAB is Sv/h)
+    #     5 mol = mol
     return decay, gamma, heat ,dose, mol
 
 def summary_table_gen(totaldata_ACAB,tally,**kwargs):
