@@ -33,7 +33,7 @@ def __parse_cell(inp):
     impn, impp, imph, impe=(1, 1, 1, 1)
     celldef = ''.join(list(inp))
     tokens = MCNP_outparser.line_parser(celldef)
-    n = tokens[0]
+    n = int(tokens[0])
     mat=tokens[1]
     if int(mat)!=0:
         ro = tokens[2]
@@ -96,7 +96,7 @@ def ogetall(infile):
             continue
         if lines[0]==' ':
             continue
-        if tokens[0] =="\n":
+        if all([tok == '' for tok in tokens]):
             nlines.append(i+1)
             break
         nlines.append(i+1)  # since we skipped the 1st title line

@@ -9,6 +9,8 @@ import subprocess
 import time
 import os
 import sys
+from contextlib import redirect_stdout
+from io import StringIO
 import shutil
 import re
 import datetime
@@ -52,7 +54,7 @@ def __display_time(seconds, granularity=2):
         result.append('Shutdown')
     return '+'.join(result[:granularity])
 
-def __backup_previous(item):
+def backup_previous(item):
     ''' Check if a file exits and changes its name to save it from being overwrite'''
     if os.path.exists(item):
         date = datetime.datetime.now()
@@ -60,7 +62,7 @@ def __backup_previous(item):
         os.replace(item,f'{item}_bk_{name_id}')
         print(f"\nBacking up existing {item} as {item}_bk_{name_id}")
 
-def __get_user_source():
+def get_user_source():
     print('Calculation of source intensity:')
     print('1: Source term units in particles per second (part/s):')
     print('2: Source term units in mA (miliAmperes): ')
@@ -76,7 +78,7 @@ def __get_user_source():
         print(f'Source term = {source:.2E} n/s')
     return source
 
-def __get_user_time():
+def get_user_time():
     user_input = input('Enter irradiation time in hours: ')
     try:
         irr_time = float(user_input) * 3600  # convert to seconds
@@ -85,7 +87,7 @@ def __get_user_time():
        print('Invalid input for irradiation time')
        sys.exit(1)
 
-def __get_user_LIB():
+def get_user_LIB():
     while True:
         Nuc_lib = input('Enter the Nuclear library (Default = EAF): ')
         if Nuc_lib in ['EAF','']:
@@ -111,9 +113,9 @@ def get_user_input(outp_name='outp'):
     if not os.path.exists(outp_name):
         raise FileNotFoundError('outp file not found')
 
-    source = __get_user_source()
-    irr_time = __get_user_time()
-    Nuc_lib, id_Egroup = __get_user_LIB()
+    source = get_user_source()
+    irr_time = get_user_time()
+    Nuc_lib, id_Egroup = get_user_LIB()
 
     with open(outp_name,'r', encoding='utf-8') as datafile:
         nps_list = []
@@ -212,7 +214,7 @@ def collapse(tally, source, **kwargs):
         outfile.write('0\n')  # card 9 ISTOP
 
     print("*********** RUNNING COLLAPS **********")
-    subprocess.run(['collaps_2008'], check=True)
+    subprocess.run(['collaps_2008'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 
 def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
@@ -239,7 +241,7 @@ def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
     for i, ctime in enumerate(cooling_times):
         inputfile += f"\n< Bloque de decaimiento {i}\n"
         if ctime < 1000:
-            isend = 0 if ctime == cooling_times[-1] else 1 
+            isend = 0 if ctime == cooling_times[-1] else 1
             inputfile += f"0  1  {isend}  {prev_nsteps}  1  0  0  0\n"
             inputfile += f"{ctime:.3E}"
             prev_nsteps = 1
@@ -265,7 +267,7 @@ def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
     # Card #7
     inputfile += ' '.join(['1'] * j_total)
     # No Card #8 and this is neutron problem, no BLOCK #12
-    inputfile += "\n0\n" # Just a 0... 
+    inputfile += "\n0\n" # Just a 0...
     # BLOCK 13
     # Card 1 NCYO IFSO
     inputfile += "0 1\n"
@@ -320,7 +322,7 @@ def create_inp(flux,irr_time,mat,vol,**kwargs):
         Elist = ['2.0e+01', '1.4e+01', '1.2e+01', '1.0e+01', '8.0e+00', '6.5e+00',
                  '5.0e+00', '4.0e+00', '3.0e+00', '2.5e+00', '2.0e+00', '1.7e+00',
                  '1.4e+00', '1.2e+00', '1.0e+00', '8.0e-01', '6.0e-01', '4.0e-01',
-                 '3.0e-01', '2.0e-01', '1.0e-01', '5.0e-02', '2.0e-02', '1.0e-02', 
+                 '3.0e-01', '2.0e-01', '1.0e-01', '5.0e-02', '2.0e-02', '1.0e-02',
                  '0.0e+00']
         inputfile.write('\n'.join([', '.join(Elist[i:i+8]) for i in range(0,len(Elist), 8)]))
         inputfile.write('\n')
@@ -367,18 +369,18 @@ def MCNP_ACAB_Map(**kwargs):
     sce_file0 = kwargs.get('esc_file', None)
     id_lib = kwargs.get('id_lib', 'EAF') # the only one that works in ACAB
     id_ILIB = kwargs.get('id_ILIB', 'vitJ+') # the only one that works in ACAB
-    corte = kwargs.get('corte', 1E-2) 
+    corte = kwargs.get('corte', 1E-2)
     print('particles: ',irr_type)
     Wdir = str(irr_cell.ncell)
     print(f"doing cell {irr_cell.ncell}")
     flux = tally0.value[n_id, 0, 0, 0, -1]*source
     if not mater.zaid:
-        print("null material")
+        print(f"doing cell {irr_cell.ncell} null material")
         return None
     if flux == 0:
-        print("null tally")
+        print(f"doing cell {irr_cell.ncell} null tally")
         return None
-    __backup_previous(Wdir)
+    backup_previous(Wdir)
     os.mkdir(Wdir)
     os.chdir(Wdir)
     if sce_file0 is not None:
@@ -396,9 +398,9 @@ def MCNP_ACAB_Map(**kwargs):
         dfile = os.environ["ACAB_LB_PATH"]+datfile
         Dat_origin_Files.append(dfile)
     Dat_origin_Files[1] = os.environ["ACAB_LB_PATH"]+"eaf_n_fis_20070"
-    Dat_origin_Files[2] = os.environ["ACAB_LB_PATH"]+"eaf_n_asscfy_20070" 
+    Dat_origin_Files[2] = os.environ["ACAB_LB_PATH"]+"eaf_n_asscfy_20070"
     for index,datfile in enumerate(DatFiles):
-        if not os.path.isfile(datfile):    
+        if not os.path.isfile(datfile):
             os.symlink(Dat_origin_Files[index],datfile)
 #    print('\033[31m flux {0}, tally_ncel {1}, n {2}\033[0m'.format(tally.value[n][-1],tally.cells[n],n))
     if 'n' in irr_type:
@@ -427,12 +429,14 @@ def MCNP_ACAB_Map(**kwargs):
 
     print("*********** RUNNING ACAB 2008 **********")
     subprocess.run('acab_2008',check=True)
-    heat = apypa.heat_isotopes_full_pd("fort.6",threshold = corte) 
-    gamma = apypa.gammas_full_pd("fort.6")
-    dose = apypa.gamma_dose_isotopes_full_pd("fort.6", threshold = corte)
-    # timesets = apypa.get_time_sets('fort.6')
-    decay = apypa.rad_act_isotopes_full_pd('fort.6', threshold = corte)
-    mol = apypa.iso_mol('fort.6', threshold = corte)
+    ignore_outputs = StringIO()
+    with redirect_stdout(ignore_outputs):
+        heat = apypa.heat_isotopes_full_pd("fort.6",threshold = corte)
+        gamma = apypa.gammas_full_pd("fort.6")
+        dose = apypa.gamma_dose_isotopes_full_pd("fort.6", threshold = corte)
+        # timesets = apypa.get_time_sets('fort.6')
+        decay = apypa.rad_act_isotopes_full_pd('fort.6', threshold = corte)
+        mol = apypa.iso_mol('fort.6', threshold = corte)
     if save in  ['All','all']:
         os.chdir(os.pardir)
     elif save == True:
@@ -448,7 +452,7 @@ def MCNP_ACAB_Map(**kwargs):
     elapsed_time=time.time()-start_time
 # Escribimos la linea en el log
     with open('logfile.txt','a', encoding='utf-8') as logfile:
-        line = [f'cell/voxel={Wdir}/{irr_cell.ncell}',f'vol={vol:.2e}ccm', f'ro={irr_cell.density*-1:.2f}g/ccm', 
+        line = [f'cell/voxel={Wdir}/{irr_cell.ncell}',f'vol={vol:.2e}ccm', f'ro={irr_cell.density*-1:.2f}g/ccm',
                 f'SourceTerm={source/6.24E15:.3e}mA',f'NeutronFlux={flux:.2e}part/s',
                 f'IrrTime={__display_time(irr_time,3)}', f'Run=-{str(irr_type)}',
                 f'Time={elapsed_time//60:.0f}m {elapsed_time%60:.2f}s']
@@ -459,8 +463,8 @@ def MCNP_ACAB_Map(**kwargs):
     #     1 decay= Bq as ACAB
     #     2 gamma= PHOTONS/CCM/SEC (as ACAB)
     #     3 heat= W/cm3
-    #     4 dose= mSv/h (ACAB is Sv/h) 
-    #     5 mol = mol 
+    #     4 dose= mSv/h (ACAB is Sv/h)
+    #     5 mol = mol
     return decay, gamma, heat ,dose, mol
 
 def summary_table_gen(totaldata_ACAB,tally,**kwargs):
@@ -475,7 +479,7 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
     panda_item = np.dtype([('cell',int),('vol',float),('decay',object),
                           ('gamma',object),('heat',object),('dose',object),('mol',object)])
     apypas = np.zeros(len(totaldata_ACAB), dtype=panda_item)
-    __backup_previous('summary_apypas.npy')
+    backup_previous('summary_apypas.npy')
     for i, pd_list in enumerate(totaldata_ACAB):
         if pd_list != None:
             apypas[i] = tally.cells[i], tally.mass[i], pd_list[0], pd_list[1], pd_list[2], pd_list[3], pd_list[4]
@@ -496,7 +500,7 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
         totals = totalsT.T
         totals = totals.round(3)
         totals = totals.applymap('{:.3e}'.format)
-        __backup_previous('summary_ACAB_{tally.cells[i]}.csv')
+        backup_previous('summary_ACAB_{tally.cells[i]}.csv')
         if save == True:
             totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
     # apypas = np.load('summary_apypas.npy', allow_pickle=True)
