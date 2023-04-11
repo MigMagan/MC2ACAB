@@ -417,7 +417,6 @@ def MCNP_ACAB_Map(**kwargs):
 
     if 'p' in irr_type:  # Deal with the isotopical feeds
         __backup_previous("RES_H")
-            print("RES_H file not already present")
         pyhtape3x.createRSH(irr_cell.ncell)
         os.symlink("../histp", "./histp") 
         os.system("htape3x int=RSH outt=RES_H")
