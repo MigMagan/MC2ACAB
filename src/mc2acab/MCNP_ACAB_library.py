@@ -80,10 +80,10 @@ def __get_user_time():
     user_input = input('Enter irradiation time in hours: ')
     try:
         irr_time = float(user_input) * 3600  # convert to seconds
+        return irr_time
     except ValueError:
-        print('Invalid input for irradiation time')
-        sys.exit(1)
-    return irr_time
+       print('Invalid input for irradiation time')
+       sys.exit(1)
 
 def __get_user_LIB():
     while True:
@@ -109,8 +109,7 @@ def get_user_input(outp_name='outp'):
     """
     # Check if the outp file exists
     if not os.path.exists(outp_name):
-        print('outp file not found')
-        sys.exit(1)
+        raise FileNotFoundError('outp file not found')
 
     source = __get_user_source()
     irr_time = __get_user_time()
@@ -222,16 +221,13 @@ def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
     Sce_name = kwargs.get('Sce_name', None)
     feeds = kwargs.get('feeds', None)
     if not isinstance(cooling_times,list) or not any(__is_number(time) for time in cooling_times):
-        print('Cooling times must we a list of times (integers in secons)')
-        sys.exit(1)
+        raise ValueError('Cooling times must we a list of times (integers in secons)')
     if not isinstance(outputs,list) or any(output not in [0,1] for output in outputs):
-        print('Outputs times must we a list of 0 (NO output) or 1 (output) '
+        raise ValueError('Outputs times must we a list of 0 (NO output) or 1 (output) '
               'plus an initial 0 correspoding to the irradiation')
-        sys.exit(1)
     if len(outputs) != len(cooling_times) + 1:
-        print('Outputs times must we a list of 0 (NO output) or 1 (output) '
+        raise ValueError('Outputs times must we a list of 0 (NO output) or 1 (output) '
               'plus an initial 0 correspoding to the irradiation')
-        sys.exit(1)
     isfed = 1 if feeds else 0
     inputfile = ''
     inputfile +="<  Bloque de acumulacion y quemado\n"
@@ -291,8 +287,7 @@ def create_inp(flux,irr_time,mat,vol,**kwargs):
     if sce_file is not None:   # Scenario file provided
         print("Using Scenario file", repr(sce_file))
         if not os.path.exists(str(sce_file)):
-            print(f'Warning!!! No Scenario File!!! {str(sce_file)} is not here')
-            sys.exit(1)
+            raise FileNotFoundError(f'Warning!!! No Scenario File!!! {str(sce_file)} is not here')
         else:
             with open(sce_file, 'r', encoding='utf-8') as infile:
                 sce_str = infile.read()
@@ -419,9 +414,7 @@ def MCNP_ACAB_Map(**kwargs):
         return None
 
     if 'p' in irr_type:  # Deal with the isotopical feeds
-        try:
-            os.remove("RES_H")
-        except FileNotFoundError:
+        __backup_previous("RES_H")
             print("RES_H file not already present")
         pyhtape3x.createRSH(irr_cell.ncell)
         os.symlink("../histp", "./histp") 
