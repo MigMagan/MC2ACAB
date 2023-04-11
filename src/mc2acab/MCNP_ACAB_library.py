@@ -2,7 +2,8 @@
 
 # Version Feb 2023
 ''' Module to generates ACAB inputs and perform ACAB automatic calculations
-    By Miguel Magan Romero and Dr. Octavio Gonzalez-del Moral updating an original code from Dr. Fernando Sordo'''
+    By Miguel Magan Romero and Dr. Octavio Gonzalez-del Moral updating an original
+    code from Dr. Fernando Sordo'''
 
 import subprocess
 import time
@@ -11,6 +12,7 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 import shutil
+import re
 import datetime
 import numpy as np
 import pandas as pd
@@ -47,8 +49,8 @@ def __display_time(seconds, granularity=2):
             seconds -= value * count
             if value == 1:
                 name = name.rstrip('s')
-            result.append("{}_{}".format(int(value), name))
-    if result == []:
+            result.append(f"{int(value)}_{name}")
+    if not result:
         result.append('Shutdown')
     return '+'.join(result[:granularity])
 
@@ -80,10 +82,10 @@ def get_user_time():
     user_input = input('Enter irradiation time in hours: ')
     try:
         irr_time = float(user_input) * 3600  # convert to seconds
+        return irr_time
     except ValueError:
-        print('Invalid input for irradiation time')
-        sys.exit(1)
-    return irr_time
+       print('Invalid input for irradiation time')
+       sys.exit(1)
 
 def get_user_LIB():
     while True:
@@ -109,8 +111,7 @@ def get_user_input(outp_name='outp'):
     """
     # Check if the outp file exists
     if not os.path.exists(outp_name):
-        print('outp file not found')
-        sys.exit(1)
+        raise FileNotFoundError('outp file not found')
 
     source = get_user_source()
     irr_time = get_user_time()
@@ -212,28 +213,23 @@ def collapse(tally, source, **kwargs):
         outfile.write('\n0\n')  # card 8 IUNC3G
         outfile.write('0\n')  # card 9 ISTOP
 
-    if not os.path.isfile('XSBL.dat'):
-        os.symlink(f"{os.environ['ACAB_LB_PATH']}eaf_n_gxs_211_flt_20070", 'XSBL.dat')
     print("*********** RUNNING COLLAPS **********")
     subprocess.run(['collaps_2008'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 
-def Escenary_generator(irr_time, cooling_times, outputs, **kwargs):
+def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
     ''' Generates an automatic ACAB Scenario file '''
     # TODO Think how to improve generator for more complex scenarios... i.e. multiple irradiation cycles
     Sce_name = kwargs.get('Sce_name', None)
     feeds = kwargs.get('feeds', None)
-    if not isinstance(cooling_times,list) or not any([__is_number(time) for time in cooling_times]):
-        print('Cooling times must we a list of times (integers in secons)')
-        sys.exit(1)
-    if not isinstance(outputs,list) or any([output not in [0,1] for output in outputs]):
-        print('Outputs times must we a list of 0 (NO output) or 1 (output) '
+    if not isinstance(cooling_times,list) or not any(__is_number(time) for time in cooling_times):
+        raise ValueError('Cooling times must we a list of times (integers in secons)')
+    if not isinstance(outputs,list) or any(output not in [0,1] for output in outputs):
+        raise ValueError('Outputs times must we a list of 0 (NO output) or 1 (output) '
               'plus an initial 0 correspoding to the irradiation')
-        sys.exit(1)
     if len(outputs) != len(cooling_times) + 1:
-        print('Outputs times must we a list of 0 (NO output) or 1 (output) '
+        raise ValueError('Outputs times must we a list of 0 (NO output) or 1 (output) '
               'plus an initial 0 correspoding to the irradiation')
-        sys.exit(1)
     isfed = 1 if feeds else 0
     inputfile = ''
     inputfile +="<  Bloque de acumulacion y quemado\n"
@@ -282,27 +278,27 @@ def Escenary_generator(irr_time, cooling_times, outputs, **kwargs):
     if Sce_name != None:
         with open (Sce_name, "w", encoding='utf-8') as writefile:
             writefile.write(inputfile)
-    else:
-        return inputfile
+    return inputfile
 
 def create_inp(flux,irr_time,mat,vol,**kwargs):
-    ''' Creates an ACAB imput file inp.5 '''
+    ''' Create an ACAB imput file inp.5 kwargs can be:
+        sce_file: irradiation scenario file. Renders irr_time irrelevant
+        feeds: External isotopical feed, typically for proton activation'''
     sce_file = kwargs.get('sce_file', None)
     feeds = kwargs.get('feeds', None)
-    if sce_file != None:   # Scenario file provided
+    if sce_file is not None:   # Scenario file provided
         print("Using Scenario file", repr(sce_file))
         if not os.path.exists(str(sce_file)):
-            print(f'Warning!!! No Scenario File!!! {str(sce_file)} is not here')
-            sys.exit(1)
+            raise FileNotFoundError(f'Warning!!! No Scenario File!!! {str(sce_file)} is not here')
         else:
             with open(sce_file, 'r', encoding='utf-8') as infile:
-                sce_File = infile.read()
+                sce_str = infile.read()
     else:
         print("Building up an automatic scenario file")
         # Decaimiento:                 1 h    1day    1week   1month    1year   5years
         cooling_times = [0.1, 1, 10, 100, 3600, 3600*24, 3600*24*7, 3600*24*30, 3600*24*365, 3600*24*365*5]
         outputs = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1] # One more element than Cooling_time (the irradiation!)
-        sce_File = Escenary_generator(irr_time, cooling_times, outputs, Sce_name=None, feeds=feeds)
+        sce_str = scenary_generator(irr_time, cooling_times, outputs, Sce_name=None, feeds=feeds)
 
     with open ("inp.5", "w", encoding='utf-8') as inputfile:
         libreria = 2232
@@ -321,7 +317,7 @@ def create_inp(flux,irr_time,mat,vol,**kwargs):
         inputfile.write("{}\n".format(Niso)) # Block 2 Card 4:
         # Card 5 ISOZO
         if feeds is not None:
-            inputfile.write("{0:d}\n".format(len(feeds[0])))
+            inputfile.write("{0:d}\n".format(len(feeds[1])))
         #Card 6
         Elist = ['2.0e+01', '1.4e+01', '1.2e+01', '1.0e+01', '8.0e+00', '6.5e+00',
                  '5.0e+00', '4.0e+00', '3.0e+00', '2.5e+00', '2.0e+00', '1.7e+00',
@@ -348,18 +344,19 @@ def create_inp(flux,irr_time,mat,vol,**kwargs):
         inputfile.write('\n')
         #Blocks 6: Feeds.
         if feeds is not None:
-            str_mats = [str(isotope) for isotope in feeds[0]]
-            inputfile.write('\n'.join([', '.join(str_mats[i:i+5]) for i in range(0,len(str_mats), 5)]))
-            inputfile.write('\n')
             str_mats = [str(isotope) for isotope in feeds[1]]
             inputfile.write('\n'.join([', '.join(str_mats[i:i+5]) for i in range(0,len(str_mats), 5)]))
             inputfile.write('\n')
+            str_mats = [str(isotope) for isotope in feeds[2]]
+            inputfile.write('\n'.join([', '.join(str_mats[i:i+5]) for i in range(0,len(str_mats), 5)]))
+            inputfile.write('\n')
         #Blocks 7-8: Burn out and cooldown scenario
-        inputfile.write(sce_File)
+        inputfile.write(sce_str)
 
 def MCNP_ACAB_Map(**kwargs):
     #tally0,mater,irr_cell,irr_time,irr_type,n_id,save,esc_file,passive_sector,source,id_lib,id_ILIB,corte):
     '''Assistant to carry ouy MCNP_ACAB calculations'''
+    feeds = None  # Default value
     start_time = time.time()
     tally0 = kwargs.get('tally0')
     mater = kwargs.get('mater')
@@ -370,7 +367,6 @@ def MCNP_ACAB_Map(**kwargs):
     source = kwargs.get('source')
     save = kwargs.get('save', False)
     sce_file0 = kwargs.get('esc_file', None)
-    passive_sector = None  # No se ha implementado la rotacion para cilindricos...
     id_lib = kwargs.get('id_lib', 'EAF') # the only one that works in ACAB
     id_ILIB = kwargs.get('id_ILIB', 'vitJ+') # the only one that works in ACAB
     corte = kwargs.get('corte', 1E-2)
@@ -407,23 +403,30 @@ def MCNP_ACAB_Map(**kwargs):
         if not os.path.isfile(datfile):
             os.symlink(Dat_origin_Files[index],datfile)
 #    print('\033[31m flux {0}, tally_ncel {1}, n {2}\033[0m'.format(tally.value[n][-1],tally.cells[n],n))
-    if irr_type == 'n':
-        collapse(tally0, source, id_lib=id_lib, id_ilib=id_ILIB, cell=n_id)
-        create_inp(flux, irr_time, mater, vol, sce_file=sce_file0)
-    elif(irr_type == 'p'):
-        # Introducimos el archivo de librerias que debe leer collapse para que lea protones
-        os.system("ln -s $ACAB_LB_PATH"+'eaf_p_gxs_211_flt_20070'+" ./XSBL.dat")
-        collapse(tally0, source, id_lib=id_lib, id_ilib=id_ILIB, cell=n_id)
-        feeds0 = pyhtape3x.histp_feeding(irr_cell,passive_sector,source)
-        create_inp(flux,irr_time,mater,vol,sce_file=sce_file0,feeds=feeds0)
-    elif(irr_type == 'np'):
-        collapse(tally0, source, id_lib=id_lib, id_ilib=id_ILIB, cell=n_id)
-        feeds0 = pyhtape3x.histp_feeding(irr_cell, passive_sector, source)
-        create_inp(flux,irr_time,mater,vol,sce_file=sce_file0,feeds=feeds0)
+    if 'n' in irr_type:
+        xsfile = f"{os.environ['ACAB_LB_PATH']}eaf_n_gxs_211_flt_20070"
     else:
+        xsfile = f"{os.environ['ACAB_LB_PATH']}eaf_p_gxs_211_flt_20070"
+    if not os.path.isfile('XSBL.dat'):
+        os.symlink(xsfile, 'XSBL.dat')
+    
+    if  re.match(r"[^pn]", irr_type):
         print("particle type not valid")
         os.chdir(os.pardir)
         return None
+
+    if 'p' in irr_type:  # Deal with the isotopical feeds
+        __backup_previous("RES_H")
+            print("RES_H file not already present")
+        pyhtape3x.createRSH(irr_cell.ncell)
+        os.symlink("../histp", "./histp") 
+        os.system("htape3x int=RSH outt=RES_H")
+        feeds=pyhtape3x.get_atom_feed(irr_cell.ncell,"RES_H")
+        feeds[2][:]=[source/6.023E23*i for i in feeds[2]]
+
+    collapse(tally0, source, id_lib=id_lib, id_ilib=id_ILIB, cell=n_id)
+    create_inp(flux,irr_time,mater,vol,sce_file=sce_file0,feeds=feeds)
+
     print("*********** RUNNING ACAB 2008 **********")
     subprocess.run('acab_2008',check=True)
     ignore_outputs = StringIO()
