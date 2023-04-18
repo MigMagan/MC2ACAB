@@ -232,14 +232,14 @@ def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
               'plus an initial 0 correspoding to the irradiation')
     isfed = 1 if feeds else 0
     inputfile = ''
-    inputfile +="<  Bloque de acumulacion y quemado\n"
+    inputfile +="< Blocks #7 & #8 irradiation set 0\n"
     inputfile += f"10  10  1  10  1  {isfed:d}  0  0\n"
     irr_times = ['{:.3e}'.format(irr_time * pow(2,-10+1+i)) for i in range(10)]
     inputfile += '\n'.join([', '.join(irr_times)])
     prev_nsteps = 10
     prev_time = 0 # To keep tracks of previous cooling time
     for i, ctime in enumerate(cooling_times):
-        inputfile += f"\n< Bloque de decaimiento {i}\n"
+        inputfile += f"\n< Blocks #7 & #8 post-irradiation set {i+1}\n"
         if ctime < 1000:
             isend = 0 if ctime == cooling_times[-1] else 1
             inputfile += f"0  1  {isend}  {prev_nsteps}  1  0  0  0\n"
@@ -252,26 +252,35 @@ def scenary_generator(irr_time, cooling_times, outputs, **kwargs):
             inputfile += '\n'.join([', '.join(dec_times)])
             prev_nsteps = 10
         prev_time = ctime
-    # BLOCK 9
-    inputfile += "\n1.0E-25 1.0E+00\n"
-    # BLOCK 10
+    inputfile +="\n< Block #9 Card #1\n"
+    inputfile += "1.0E-25 1.0E+00\n"
+    inputfile +="< Block #10 Card #1\n"
     inputfile += "0 0 0 \n"
-    #BLOCK 11:
-    inputfile += "<  Block 11 \n"
+    inputfile +="< Block #11 card #1\n"
     # Card 1 IWP IMTX IWDR       IDOSE IPHCUT IDHEAT     IOFFSD ICEDE INEMISS IDAMAGE
     inputfile += "1 0 1  1 1 0  0 0 0 0 \n"
+    inputfile +="< Block #11 card #2\n"
     inputfile += "0 0 1 0 \n" # Card 2
-    #  Card 6 //   NOPUL NTSEQ NOTTS NVFL
+    # Block #11 cards #3 #4 not appear because IOFFSD = 0
+    # Block #11 card #5 not appear because IOFFSD = 0 and ILIFR = 0
+    inputfile +="< Block #11 card #6\n"
     j_total = len(cooling_times) + 1
+    # Block #11 Card #6  NOPUL NTSEQ NOTTS NVFL
     inputfile += f"0 0 {j_total:d} 1 \n"
-    # Card #7
+    inputfile +="< Block #11 card #7\n"
+    # Block #11 Card #7 FVAR for each set in the unit plus aditional sets
     inputfile += ' '.join(['1'] * j_total)
-    # No Card #8 and this is neutron problem, no BLOCK #12
-    inputfile += "\n0\n" # Just a 0...
-    # BLOCK 13
-    # Card 1 NCYO IFSO
+    # Block #11 Card #8 not appear because NOPUL = 0
+    inputfile +="\n< Block #12 card #1\n"
+    # Block #12 Card #1 IIFD
+    inputfile += "0\n"
+    # Block #12 Card #2 to #15 not appear because IIFD = 0
+    inputfile +="< Block #13 card #1\n"
+    # BLOCK #13 Card #1 NCYO IFSO
     inputfile += "0 1\n"
-    # No Card 2. Notice that ACAB will STILL label next card as Card #2
+    # BLOCK #13 Card #2 not appears because NCYO = 0
+    inputfile +="< Block #13 card #3\n"
+    # BLOCK #13 Card #3 ITSO
     str_outputs = [str(output) for output in outputs]
     inputfile += '\n'.join([' '.join(str_outputs[i:i+8]) for i in range(0,j_total, 8)])
     inputfile += '\n'
@@ -409,7 +418,7 @@ def MCNP_ACAB_Map(**kwargs):
         xsfile = f"{os.environ['ACAB_LB_PATH']}eaf_p_gxs_211_flt_20070"
     if not os.path.isfile('XSBL.dat'):
         os.symlink(xsfile, 'XSBL.dat')
-    
+
     if  re.match(r"[^pn]", irr_type):
         print("particle type not valid")
         os.chdir(os.pardir)
@@ -418,7 +427,7 @@ def MCNP_ACAB_Map(**kwargs):
     if 'p' in irr_type:  # Deal with the isotopical feeds
         __backup_previous("RES_H")
         pyhtape3x.createRSH(irr_cell.ncell)
-        os.symlink("../histp", "./histp") 
+        os.symlink("../histp", "./histp")
         os.system("htape3x int=RSH outt=RES_H")
         feeds=pyhtape3x.get_atom_feed(irr_cell.ncell,"RES_H")
         feeds[2][:]=[source/6.023E23*i for i in feeds[2]]
