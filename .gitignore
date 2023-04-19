@@ -1,2 +1,7 @@
+.gitignore
 src/RES*
 src/out*
+dist/
+src/MC2ACAB.egg-info/
+src/__pycache__/
+src/mc2acab/__pycache__/
