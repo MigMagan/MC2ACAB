@@ -19,9 +19,9 @@ def MCNP_ACAB_Mapstar(n):
     outputs = MCNPACAB.MCNP_ACAB_Map(tally0 = tally0, mater = mat[n], n_id = n,
                                      irr_cell = irr_cell[n], irr_time = reqs['-irr_time'],
                                      irr_type = reqs['-part'], source = reqs['-st'],
-                                     save = options['-save'], esc_file = options['-sce_file'], 
+                                     save = options['-save'], esc_file = options['-sce_file'],
                                      passive_sector = options['-passive_sector'],
-                                     id_lib =options['-nuc_lib'], 
+                                     id_lib =options['-nuc_lib'],
                                      id_ILIB = options['-id_Egroup'],
                                      corte = options['-apypa_verge'])
     # Outputs:
@@ -87,8 +87,8 @@ options = {
     '-decay_times' : None,
     '-decay_outs' : None,
     '-passive_sector' : None, # so far useless
-    '-nuc_lib': 'EAF', 
-    '-id_Egroup': 'vitJ+', 
+    '-nuc_lib': 'EAF',
+    '-id_Egroup': 'vitJ+',
 }
 def __parse_args(reqs, options, args):
     for arg in args:
@@ -198,8 +198,7 @@ print('Obtained materials')
 MCNPACAB.backup_previous('logfile.txt')
 with open('logfile.txt','w', encoding='utf-8') as logfile:
     logfile.write(' '.join([f'{str(item)}:{reqs[item]}' for item in reqs if item not in ['-st_units']]))
-    logfile.write(f" -sce_file_n:{options['-sce_file_n']}")
-    logfile.write(f" -sce_file_np:{options['-sce_file_np']}")
+    logfile.write(f" -sce_file:{options['-sce_file']}")
     logfile.write('\n')
     logfile.close()
 
