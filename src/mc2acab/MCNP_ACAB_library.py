@@ -494,7 +494,7 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
             apypas[i] = tally.cells[i], tally.mass[i], pd_list[0], pd_list[1], pd_list[2], pd_list[3], pd_list[4]
     np.save('summary_apypas',apypas)
     print('Writing down summary_ACAB file')
-    for voxel in tqdm(apypas,total=len(apypas)):
+    for i, voxel in tqdm(enumerate(apypas),total=len(apypas)):
         totals = pd.DataFrame()
         totals.index.name = f'Cell:{voxel[0]} Vol:{float(voxel[1]):.2e}'
         for panda in list(voxel)[2:]:
