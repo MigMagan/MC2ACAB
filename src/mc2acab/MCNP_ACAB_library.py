@@ -515,3 +515,63 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
             totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')
     # apypas = np.load('summary_apypas.npy', allow_pickle=True)
     return apypas
+
+def apypa2sdef(n_cell=0, decay_time=0,  infile='summary_apypas.npy'):
+    """ Genera una entrada SDEF a partir de un summary_apypa"""
+    while not os.path.exists(infile):
+        infile = input('summary_apypas.npy not present, please type apypa input file: ')
+    apypas_in = np.load(infile, allow_pickle=True)
+    cells = [x.astype(int) for x in apypas_in['cell']]
+    while int(n_cell) not in cells:
+        print(apypas_in['cell'])
+        n_cell = int(input('Cell number not included in apypa, please type correct one: '))
+    for it_apypa in apypas_in:
+        if it_apypa[0] == n_cell:
+            vol_cell = it_apypa[1]
+            pd_gammas = it_apypa[3]
+    times = [x for x in pd_gammas.columns]
+    while decay_time not in times:
+        print(times)
+        decay_time = float(input('Decay_time not included in apypa, please type correct one: '))
+    gamma_E = np.array(pd_gammas.index[:-1])
+    EE = np.zeros(len(gamma_E))
+    EE[-1] = gamma_E[-1]*2
+    for i, e in reversed(list(enumerate(gamma_E[:-1]))):
+        EE[i] = 2*e - EE[i+1]
+    EE.sort()
+    EEarray = np.asarray(EE)
+    print('Escribiendo entrada SDEF')
+    source_term = pd_gammas[decay_time][-1]
+    gamma_spectra = pd_gammas[decay_time][:-1]
+    gamma_spectra *= vol_cell # to normalice to gamma_flux_photons/s
+#   Let's write the SDEF file
+    with open(f'SDEF_cell{n_cell}_{__display_time(decay_time)}.i','w') as output_SDEF:
+        output_SDEF.write('c =================================================='
+                          '========================= \n')
+        output_SDEF.write('c ===================== ACAB GAMMA SOURCE =========='
+                          '========================= \n')
+        output_SDEF.write(f'c Source term {source_term:1.4E} gammas/second, '
+                          f'volume = {vol_cell:1.3f} ccm \n')
+        output_SDEF.write('SDEF    X=d1 Y=d2 Z=d3 \n')
+        output_SDEF.write(f'        CEL={str(n_cell)} \n')
+        output_SDEF.write('        PAR=P \n')
+        output_SDEF.write('        ERG=d4 \n')
+        output_SDEF.write('SI1 X0 X1 $ approx limits X axis, must be defined by user \n')
+        output_SDEF.write('SP1 0 1 \n')
+        output_SDEF.write('SI2 Y0 Y1 $ approx limits Y axis, must be defined by user \n')
+        output_SDEF.write('SP2 0 1 \n')
+        output_SDEF.write('SI3 Z0 Z1 $ approx limits Z axis, must be defined by user \n')
+        output_SDEF.write('SP3 0 1 \n')
+        output_SDEF.write('SI4  ')
+        EE_str = [f'{g_it:8.3f}' for g_it in EEarray]
+        output_SDEF.write('\n     '.join([' '.join(EE_str[i:i+8]) for i in
+                                              range(0,len(EE_str), 8)]))
+        output_SDEF.write('\nSP4   ')
+        spectra_str = [f'{g_it:8.3e}' for g_it in gamma_spectra]
+        output_SDEF.write('\n      '.join([' '.join(spectra_str[i:i+8]) for i in
+                                              range(0,len(spectra_str), 8)]))
+        output_SDEF.write('\n')
+        output_SDEF.write('c =================================================='
+                          '========================= \n')
+        output_SDEF.close()
+    return
