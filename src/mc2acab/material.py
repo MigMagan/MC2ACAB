@@ -4,8 +4,8 @@
     Miguel Magan and Dr. Octavio Gonzalez Feb 2023'''
 
 import numpy as np
-import MCNP_outparser
-from pyhtape3x import atomic_mass
+from mc2acab import MCNP_outparser
+from mc2acab.pyhtape3x import atomic_mass
 
 def is_number(string):
     '''Check if a number is a number'''
