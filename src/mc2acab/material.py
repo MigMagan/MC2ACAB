@@ -3,10 +3,9 @@
 ''' Material object for ESS-Bilbao MCNP suite by
     Miguel Magan and Dr. Octavio Gonzalez Feb 2023'''
 
-# import re
 import numpy as np
-from . import MCNP_outparser
-from .pyhtape3x import atomic_mass
+import MCNP_outparser
+from pyhtape3x import atomic_mass
 
 def is_number(string):
     '''Check if a number is a number'''

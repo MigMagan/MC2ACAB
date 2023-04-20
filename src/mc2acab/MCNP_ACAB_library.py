@@ -19,7 +19,7 @@ import pandas as pd
 from tqdm import tqdm
 import apypa
 import tally as tal
-from . import pyhtape3x
+import pyhtape3x
 
 
 def __is_number(s):
