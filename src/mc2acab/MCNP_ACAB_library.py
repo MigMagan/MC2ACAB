@@ -516,23 +516,42 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
     # apypas = np.load('summary_apypas.npy', allow_pickle=True)
     return apypas
 
-def apypa2sdef(n_cell=0, decay_time=0,  infile='summary_apypas.npy'):
-    """ Genera una entrada SDEF a partir de un summary_apypa"""
+def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
+    """ Genera una entrada SDEF para multiples celdas y tiempos a partir de un summary_apypa"""
     while not os.path.exists(infile):
         infile = input('summary_apypas.npy not present, please type apypa input file: ')
     apypas_in = np.load(infile, allow_pickle=True)
-    cells = [x.astype(int) for x in apypas_in['cell']]
-    while int(n_cell) not in cells:
-        print(apypas_in['cell'])
-        n_cell = int(input('Cell number not included in apypa, please type correct one: '))
+    cells = [int(x) for x in apypas_in['cell']]
+    if in_cell is None or in_cell is []:
+        in_cell = input(f'{cells} \nPlease type cells of interest: ').split()
+        in_cell = [int(i) for i in in_cell]
+    elif type(in_cell) == int:
+        in_cell = [in_cell]
+    elif type(in_cell) == list:
+        in_cell = [int(i) for i in in_cell]
+    while not set(in_cell).issubset(cells):
+        in_cell = input(f'{cells} \nNot all cell numbers {~in_cell} included in apypa, '
+                        'please type correct one: ').split()
+        in_cell = [int(i) for i in in_cell]
     for it_apypa in apypas_in:
-        if it_apypa[0] == n_cell:
-            vol_cell = it_apypa[1]
+        if it_apypa[0] in in_cell:
             pd_gammas = it_apypa[3]
-    times = [x for x in pd_gammas.columns]
-    while decay_time not in times:
-        print(times)
-        decay_time = float(input('Decay_time not included in apypa, please type correct one: '))
+            break
+    times = [float(x) for x in pd_gammas.columns]
+    if in_times is None or in_times is []:
+        in_times = input(f'{times} \nPlease type times of interest: ').split()
+        in_times = [float(i) for i in in_times]
+    elif type(in_times) == float:
+        in_times = [in_times]
+    elif type(in_times) == list:
+        in_times = [float(i) for i in in_times]
+    while not set(in_times).issubset(times):
+        in_times = input(f'{times} \nDecay times {in_times} not included in apypa,'
+                         ' please type correct one: ').split()
+        in_times = [float(i) for i in in_times]
+    in_cell.sort()
+    in_times.sort()
+    # print(in_cell, in_times)
     gamma_E = np.array(pd_gammas.index[:-1])
     EE = np.zeros(len(gamma_E))
     EE[-1] = gamma_E[-1]*2
@@ -540,38 +559,78 @@ def apypa2sdef(n_cell=0, decay_time=0,  infile='summary_apypas.npy'):
         EE[i] = 2*e - EE[i+1]
     EE.sort()
     EEarray = np.asarray(EE)
-    print('Escribiendo entrada SDEF')
-    source_term = pd_gammas[decay_time][-1]
-    gamma_spectra = pd_gammas[decay_time][:-1]
-    gamma_spectra *= vol_cell # to normalice to gamma_flux_photons/s
+    gamma_spectra = np.zeros((len(in_cell),len(in_times),len(EEarray)),dtype=float)
+    gamma_total = np.zeros((len(in_cell),len(in_times)),dtype = float)
+    cell_vols = np.zeros((len(in_cell)),dtype = float)
+    for c, t in np.ndindex(gamma_total.shape):
+        for it_apypa in apypas_in:
+            if it_apypa[0] == in_cell[c]:
+                cell_vols[c] = float(it_apypa['vol'])
+                pd_gammas = it_apypa[3]
+                for gamma_time in pd_gammas.columns:
+                    if gamma_time == in_times[t]:
+                        gamma_total[c,t] = pd_gammas[gamma_time][-1] * float(it_apypa['vol'])
+                        for i, e in enumerate(range(len(EEarray)-1,-1,-1)):
+                            gamma_spectra[c,t,e] = pd_gammas[gamma_time][i]
+    print('Writing down SDEF card')
 #   Let's write the SDEF file
-    with open(f'SDEF_cell{n_cell}_{__display_time(decay_time)}.i','w') as output_SDEF:
-        output_SDEF.write('c =================================================='
+    for t, time_it in enumerate(in_times):
+        cell_str = '_'.join([f'{c_it}' for c_it in in_cell])
+        with open(f'SDEF_cell{cell_str}_{__display_time(time_it)}.i','w') as output_SDEF:
+            output_SDEF.write('c =================================================='
+                              '========================= \nc =================='
+                              '=== ACAB GAMMA SOURCE =================================== \n')
+            st_str =' '.join([f'{c_it}:{gamma_total[c,t]:.2e}' for c, c_it in enumerate(in_cell)])
+            vol_str =' '.join([f'{c_it}:{cell_vols[c]:.2f}' for c, c_it in enumerate(in_cell)])
+            output_SDEF.write(f'c Source term of several cells {st_str} gammas/second, '
+                              f'\nc Volumes = {vol_str} ccm \n'
+                              f'c Source term total = {gamma_total[:,t].sum():.3e} gammas/second\n')
+            output_SDEF.write('SDEF    X = D1 Y = D2 Z = D3 \n')
+            output_SDEF.write('       CEL = D4 \n')
+            # output_SDEF.write('       WGT = FCEL D5 \n') It has to be a explicit number!!!
+            output_SDEF.write(f'       WGT = {gamma_total[:,t].sum():.3e} \n')
+            output_SDEF.write('       PAR = P \n')
+            output_SDEF.write('       ERG = FCEL D5 \n')
+            output_SDEF.write('c ---------------- spatial distribution --------------------\n')
+            output_SDEF.write('SI1 X0 X1 $ approx limits X axis, must be defined by user \n')
+            output_SDEF.write('SP1 0 1 \n')
+            output_SDEF.write('SI2 Y0 Y1 $ approx limits Y axis, must be defined by user \n')
+            output_SDEF.write('SP2 0 1 \n')
+            output_SDEF.write('SI3 Z0 Z1 $ approx limits Z axis, must be defined by user \n')
+            output_SDEF.write('SP3 0 1 \n')
+            output_SDEF.write('c ---------------- cells distribution ----------------------')
+            output_SDEF.write('\nSI4 L ')
+            cell_str = [f'{c_it}' for c_it in in_cell]
+            output_SDEF.write('\n     '.join([' '.join(cell_str[i:i+8]) for i in
+                                              range(0,len(cell_str), 8)]))
+            output_SDEF.write('\nSP4 ')
+            g_total_str = [f'{g_it/gamma_total[:,t].sum():8.3e}' for g_it in gamma_total[:,t]]
+            output_SDEF.write('\n     '.join([' '.join(g_total_str[i:i+8]) for i in
+                                              range(0,len(g_total_str), 8)]))
+            output_SDEF.write('   $ total probability = 1')
+            # output_SDEF.write('\nc ------- Weight distribution depending of cells -----------')
+            # func_str = [f'{x}' for x in range(6,len(in_cell)+6)]
+            # output_SDEF.write('\nDS5 S ')
+            # output_SDEF.write('\n     '.join([' '.join(func_str[i:i+8]) for i in
+            #                                   range(0,len(func_str), 8)]))
+            # for i, n_func in enumerate(func_str):
+            #     output_SDEF.write(f'\nSI{n_func} L {gamma_total[i,t]:2e}')
+            #     output_SDEF.write(f'\nSP{n_func} 1')
+            output_SDEF.write('\nc ------- Energy distribution depending of cells -----------')
+            func_str = [f'{x}' for x in range(6,6 + len(in_cell))]
+            output_SDEF.write('\nDS5 S ')
+            output_SDEF.write('\n     '.join([' '.join(func_str[i:i+8]) for i in
+                                              range(0,len(func_str), 8)]))
+            EE_str = [f'{g_it:8.3f}' for g_it in EEarray]
+            for i, n_func in enumerate(func_str):
+                output_SDEF.write(f'\nSI{n_func} ')
+                output_SDEF.write('\n     '.join([' '.join(EE_str[i:i+8]) for i in
+                                                  range(0,len(EE_str), 8)]))
+                output_SDEF.write(f'\nSP{n_func}  ')
+                spectra_str = [f'{g_it:8.3e}' for g_it in gamma_spectra[i,t]]
+                output_SDEF.write('\n      '.join([' '.join(spectra_str[i:i+8]) for i in
+                                                   range(0,len(spectra_str), 8)]))
+            output_SDEF.write('\nc =================================================='
                           '========================= \n')
-        output_SDEF.write('c ===================== ACAB GAMMA SOURCE =========='
-                          '========================= \n')
-        output_SDEF.write(f'c Source term {source_term:1.4E} gammas/second, '
-                          f'volume = {vol_cell:1.3f} ccm \n')
-        output_SDEF.write('SDEF    X=d1 Y=d2 Z=d3 \n')
-        output_SDEF.write(f'        CEL={str(n_cell)} \n')
-        output_SDEF.write('        PAR=P \n')
-        output_SDEF.write('        ERG=d4 \n')
-        output_SDEF.write('SI1 X0 X1 $ approx limits X axis, must be defined by user \n')
-        output_SDEF.write('SP1 0 1 \n')
-        output_SDEF.write('SI2 Y0 Y1 $ approx limits Y axis, must be defined by user \n')
-        output_SDEF.write('SP2 0 1 \n')
-        output_SDEF.write('SI3 Z0 Z1 $ approx limits Z axis, must be defined by user \n')
-        output_SDEF.write('SP3 0 1 \n')
-        output_SDEF.write('SI4  ')
-        EE_str = [f'{g_it:8.3f}' for g_it in EEarray]
-        output_SDEF.write('\n     '.join([' '.join(EE_str[i:i+8]) for i in
-                                              range(0,len(EE_str), 8)]))
-        output_SDEF.write('\nSP4   ')
-        spectra_str = [f'{g_it:8.3e}' for g_it in gamma_spectra]
-        output_SDEF.write('\n      '.join([' '.join(spectra_str[i:i+8]) for i in
-                                              range(0,len(spectra_str), 8)]))
-        output_SDEF.write('\n')
-        output_SDEF.write('c =================================================='
-                          '========================= \n')
-        output_SDEF.close()
-    return
+            output_SDEF.close()
+    return gamma_total
