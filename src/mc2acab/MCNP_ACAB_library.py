@@ -530,13 +530,10 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
     elif type(in_cell) == list:
         in_cell = [int(i) for i in in_cell]
     while not set(in_cell).issubset(cells):
-        in_cell = input(f'{cells} \nNot all cell numbers {~in_cell} included in apypa, '
+        in_cell = input(f'{cells} \nNot all cell numbers {in_cell} included in apypa, '
                         'please type correct one: ').split()
         in_cell = [int(i) for i in in_cell]
-    for it_apypa in apypas_in:
-        if it_apypa[0] in in_cell:
-            pd_gammas = it_apypa[3]
-            break
+    pd_gammas = apypas_in[np.where(apypas_in['cell'] == in_cell[0])][0][3]
     times = [float(x) for x in pd_gammas.columns]
     if in_times is None or in_times is []:
         in_times = input(f'{times} \nPlease type times of interest: ').split()
@@ -555,23 +552,19 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
     gamma_E = np.array(pd_gammas.index[:-1])
     EE = np.zeros(len(gamma_E))
     EE[-1] = gamma_E[-1]*2
-    for i, e in reversed(list(enumerate(gamma_E[:-1]))):
-        EE[i] = 2*e - EE[i+1]
-    EE.sort()
-    EEarray = np.asarray(EE)
+    for i in reversed(range(len(gamma_E[:-1]))):
+        EE[i] = 2 * gamma_E[i] - EE[i+1]
+    EEarray = np.sort(EE)
     gamma_spectra = np.zeros((len(in_cell),len(in_times),len(EEarray)),dtype=float)
     gamma_total = np.zeros((len(in_cell),len(in_times)),dtype = float)
     cell_vols = np.zeros((len(in_cell)),dtype = float)
-    for c, t in np.ndindex(gamma_total.shape):
-        for it_apypa in apypas_in:
-            if it_apypa[0] == in_cell[c]:
-                cell_vols[c] = float(it_apypa['vol'])
-                pd_gammas = it_apypa[3]
-                for gamma_time in pd_gammas.columns:
-                    if gamma_time == in_times[t]:
-                        gamma_total[c,t] = pd_gammas[gamma_time][-1] * float(it_apypa['vol'])
-                        for i, e in enumerate(range(len(EEarray)-1,-1,-1)):
-                            gamma_spectra[c,t,e] = pd_gammas[gamma_time][i]
+    for c, it_cell in enumerate(in_cell):
+        cell_vols[c] = float(apypas_in[np.where(apypas_in['cell'] == it_cell)][0]['vol'])
+        pd_gammas = apypas_in[np.where(apypas_in['cell'] == it_cell)][0]['gamma']
+        for t, it_time in enumerate(in_times):
+            gamma_total[c,t] = pd_gammas[it_time][-1] * cell_vols[c]
+            for i, e in enumerate(range(len(EEarray)-1,-1,-1)):
+                gamma_spectra[c,t,e] = pd_gammas[it_time][i]
     print('Writing down SDEF card')
 #   Let's write the SDEF file
     for t, time_it in enumerate(in_times):
