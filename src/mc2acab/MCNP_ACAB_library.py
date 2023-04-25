@@ -523,8 +523,11 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
     apypas_in = np.load(infile, allow_pickle=True)
     cells = [int(x) for x in apypas_in['cell']]
     if in_cell is None or in_cell is []:
-        in_cell = input(f'{cells} \nPlease type cells of interest: ').split()
-        in_cell = [int(i) for i in in_cell]
+        in_cell = input(f'{cells} \nPlease type cells of interest(default: All): ').replace(',',' ').split()
+        if in_cell in [['All'],['all']] or not in_cell:
+            in_cell = cells
+        else:
+            in_cell = [int(i) for i in in_cell]
     elif type(in_cell) == int:
         in_cell = [in_cell]
     elif type(in_cell) == list:
@@ -536,8 +539,11 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
     pd_gammas = apypas_in[np.where(apypas_in['cell'] == in_cell[0])][0][3]
     times = [float(x) for x in pd_gammas.columns]
     if in_times is None or in_times is []:
-        in_times = input(f'{times} \nPlease type times of interest: ').split()
-        in_times = [float(i) for i in in_times]
+        in_times = input(f'{times} \nPlease type times of interest (default: All): ').replace(',',' ').split()
+        if in_times in [['All'],['all']] or not in_times:
+            in_times = times
+        else:
+            in_times = [float(i) for i in in_times]
     elif type(in_times) == float:
         in_times = [in_times]
     elif type(in_times) == list:
