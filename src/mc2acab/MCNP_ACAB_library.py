@@ -573,11 +573,14 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
             output_SDEF.write('c =================================================='
                               '========================= \nc =================='
                               '=== ACAB GAMMA SOURCE =================================== \n')
-            st_str =' '.join([f'{c_it}:{gamma_total[c,t]:.2e}' for c, c_it in enumerate(in_cell)])
-            vol_str =' '.join([f'{c_it}:{cell_vols[c]:.2f}' for c, c_it in enumerate(in_cell)])
-            output_SDEF.write(f'c Source term of several cells {st_str} gammas/second, '
-                              f'\nc Volumes = {vol_str} ccm \n'
-                              f'c Source term total = {gamma_total[:,t].sum():.3e} gammas/second\n')
+            st_str =[f'{c_it}:{gamma_total[c,t]:.2e}' for c, c_it in enumerate(in_cell)]
+            vol_str =[f'{c_it}:{cell_vols[c]:.2f}' for c, c_it in enumerate(in_cell)]
+            output_SDEF.write('c Source terms (cell:gammas/s): {0} '.format(
+                                '\nc       '.join(['  '.join(st_str[i:i+4])
+                                                  for i in range(0,len(st_str), 4)])))
+            output_SDEF.write('\nc Volumes (cell:ccm) {0} \n'.format('\nc       '.join(
+                                  ['  '.join(vol_str[i:i+4]) for i in range(0,len(vol_str), 4)])))
+            output_SDEF.write(f'c Source term total = {gamma_total[:,t].sum():.3e} gammas/second\n')
             output_SDEF.write('SDEF    X = D1 Y = D2 Z = D3 \n')
             output_SDEF.write('       CEL = D4 \n')
             # output_SDEF.write('       WGT = FCEL D5 \n') It has to be a explicit number!!!
@@ -626,4 +629,4 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
             output_SDEF.write('\nc =================================================='
                           '========================= \n')
             output_SDEF.close()
-    return gamma_total
+    return
