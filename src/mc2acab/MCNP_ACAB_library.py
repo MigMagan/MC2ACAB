@@ -583,7 +583,6 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
             output_SDEF.write(f'c Source term total = {gamma_total[:,t].sum():.3e} gammas/second\n')
             output_SDEF.write('SDEF    X = D1 Y = D2 Z = D3 \n')
             output_SDEF.write('       CEL = D4 \n')
-            # output_SDEF.write('       WGT = FCEL D5 \n') It has to be a explicit number!!!
             output_SDEF.write(f'       WGT = {gamma_total[:,t].sum():.3e} \n')
             output_SDEF.write('       PAR = P \n')
             output_SDEF.write('       ERG = FCEL D5 \n')
@@ -604,14 +603,6 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
             output_SDEF.write('\n     '.join([' '.join(g_total_str[i:i+8]) for i in
                                               range(0,len(g_total_str), 8)]))
             output_SDEF.write('   $ total probability = 1')
-            # output_SDEF.write('\nc ------- Weight distribution depending of cells -----------')
-            # func_str = [f'{x}' for x in range(6,len(in_cell)+6)]
-            # output_SDEF.write('\nDS5 S ')
-            # output_SDEF.write('\n     '.join([' '.join(func_str[i:i+8]) for i in
-            #                                   range(0,len(func_str), 8)]))
-            # for i, n_func in enumerate(func_str):
-            #     output_SDEF.write(f'\nSI{n_func} L {gamma_total[i,t]:2e}')
-            #     output_SDEF.write(f'\nSP{n_func} 1')
             output_SDEF.write('\nc ------- Energy distribution depending of cells -----------')
             func_str = [f'{x}' for x in range(6,6 + len(in_cell))]
             output_SDEF.write('\nDS5 S ')
