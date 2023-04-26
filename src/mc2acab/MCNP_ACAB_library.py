@@ -628,3 +628,16 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
                           '========================= \n')
             output_SDEF.close()
     return
+
+def check_utility(filename):
+    if os.path.isfile(filename):
+        select = input(f'{filename} exists, do you want to repeat the process? y/n Default: (n) ')
+        select = 'n' if select == '' else select
+        while select not in ['y', 'n']:
+            select = input('Please, y or n:')
+    if not os.path.isfile(filename) or select == 'y':
+        if os.path.isfile(filename):
+            backup_previous(filename)
+        return True
+    else:
+        return False

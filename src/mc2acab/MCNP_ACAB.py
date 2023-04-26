@@ -61,6 +61,7 @@ if len(sys.argv) <= 1:
     print ('\033[36m Options \033[0m')
     print('-normal_flux Use normalized flux with FM card')
     print('-sce_file=File Use external irradiation scenario file')
+    print('-source Request SDEF file generation')
     print('-save=[All,True,False] Modify ACAB_writer output files'
           ' and delete folders after execution')
     print('-threshold=[0 to 1] Indicates cutoff for Apipa')
@@ -86,11 +87,22 @@ options = {
     '-apypa_verge' : 0.9,
     '-decay_times' : None,
     '-decay_outs' : None,
+    '-sdef' : None,
     '-passive_sector' : None, # so far useless
     '-nuc_lib': 'EAF',
     '-id_Egroup': 'vitJ+',
 }
 def __parse_args(reqs, options, args):
+    if os.path.isfile('logfile.txt'):
+        with open('logfile.txt',"r", encoding='utf-8') as infile:
+            line0 = infile.readlines()[0].split()
+        reqs['-part'] = line0[0].split(':')[-1]
+        reqs['-outpfile'] = line0[1].split(':')[-1]
+        reqs['-tally_num'] = int(line0[2].split(':')[-1])
+        reqs['-st_units'] = int(line0[3].split(':')[-1])
+        reqs['-st'] = float(line0[4].split(':')[-1])
+        reqs['-irr_time'] = float(line0[5].split(':')[-1])
+        options['-sce_file'] = line0[6].split(':')[-1]
     for arg in args:
         if  arg == '-np' and reqs['-part'] == None:
             reqs['-part'] = 'np'
@@ -134,7 +146,9 @@ def __parse_args(reqs, options, args):
         #     options['-decay_outs'] =[int(out) for out in dec_outs.split(',')]
         #     while not all options['-decay_outs'] in [0,1]:
         #         dec_outs = input('-decay outs must be a list of 0 (no output) or 1 (output) and must start with a 0')
-        #         options['-decay_outs'] =[int(out) for out in dec_outs.split(',')] 
+        #         options['-decay_outs'] =[int(out) for out in dec_outs.split(',')]
+        elif arg.startswith('-source'):
+            options['-sdef'] = True
         elif arg.startswith('-rotate='):
             options['-passive_sector='] = int(arg.split('=')[1])
         elif arg.startswith('-nuc_lib='):
@@ -155,6 +169,9 @@ def __parse_args(reqs, options, args):
                                   ' is not here \nEnter outp file name: ')
     if reqs['-st_units'] == '2':
         reqs['-st'] *= 6.24E15
+    if options['-sce_file']:
+        print('There are a neutron activacion scenario, irradiation_time not required, just enter 1')
+        reqs['-irr_time'] = 1
     if None in reqs.values():
         raise ValueError('Warning!!! input incomplete, further information required:')
     if not options['-sce_file'] and options['-decay_times']:
@@ -172,45 +189,48 @@ try:
 except Exception as e:
     print(e)
     tally0, reqs['-irr_time'], reqs['-st'], options['-nuc_lib'], options['-id_Egroup'] = MCNPACAB.get_user_input(reqs['-outpfile'])
+
 #TODO
 # tally = MCNPACAB.tally_compose(tally0, Passive_sector)
 # cmatrix = MCNPACAB.comp_matrix(tally0, Passive_sector)
-ncel = [int(cell0) for cell0 in (tally0.cells)]
-print('Obtained cell numbers')
-vol0 = tally0.mass
-irr_cell = [cel.oget(reqs['-outpfile'],ncell_i) for ncell_i in ncel]
-print('Obtained cell properties')
-# Because there can be quite a lot of cells with the same material, it is interesting to cache them
-mat = []
-matnumbers = np.zeros(0)
-for ncell0 in irr_cell:
-    try:
-        Mindex = list(matnumbers).index(ncell0.mat)
-        mat0 = material.mat(mat[Mindex].number)
-        mat0.N = list(mat[Mindex].N)
-        mat0.M = list(mat[Mindex].M)
-        mat.append(mat0)
-    except:
-        mat.append(material.oget(reqs['-outpfile'],ncell0.mat))
-        matnumbers=np.append(matnumbers,mat[-1].number)
-print('Obtained materials')
+if MCNPACAB.check_utility('summary_apypas.npy'):
+    MCNPACAB.backup_previous('logfile.txt')
+    ncel = [int(cell0) for cell0 in (tally0.cells)]
+    print('Obtained cell numbers')
+    vol0 = tally0.mass
+    irr_cell = [cel.oget(reqs['-outpfile'],ncell_i) for ncell_i in ncel]
+    print('Obtained cell properties')
+    # Because there can be quite a lot of cells with the same material, it is interesting to cache them
+    mat = []
+    matnumbers = np.zeros(0)
+    for ncell0 in irr_cell:
+        try:
+            Mindex = list(matnumbers).index(ncell0.mat)
+            mat0 = material.mat(mat[Mindex].number)
+            mat0.N = list(mat[Mindex].N)
+            mat0.M = list(mat[Mindex].M)
+            mat.append(mat0)
+        except:
+            mat.append(material.oget(reqs['-outpfile'],ncell0.mat))
+            matnumbers=np.append(matnumbers,mat[-1].number)
+    print('Obtained materials')
+    with open('logfile.txt','w', encoding='utf-8') as logfile:
+        logfile.write(' '.join([f'{str(item)}:{reqs[item]}' for item in reqs]))
+        logfile.write(f" -sce_file:{options['-sce_file']}")
+        logfile.write('\n')
+        logfile.close()
+    with Pool() as pool:
+        totaldata = pool.map(MCNP_ACAB_Mapstar, range(tally0.ncells))
+    if not options['-decay_times']:
+        t_times = list(totaldata[0][0].index)
+    else:
+        o_times = [1.0]
+        for time in options['-decay_times']:
+            if time in list(totaldata[0][0].index) and time not in o_times:
+                o_times.append(time)
+        t_times = o_times
+    MCNPACAB.summary_table_gen(totaldata, tally0, t_times=t_times)
 
-MCNPACAB.backup_previous('logfile.txt')
-with open('logfile.txt','w', encoding='utf-8') as logfile:
-    logfile.write(' '.join([f'{str(item)}:{reqs[item]}' for item in reqs if item not in ['-st_units']]))
-    logfile.write(f" -sce_file:{options['-sce_file']}")
-    logfile.write('\n')
-    logfile.close()
+if options['-sdef'] == True:
+    MCNPACAB.apypa2sdef()
 
-with Pool() as pool:
-    totaldata = pool.map(MCNP_ACAB_Mapstar, range(tally0.ncells))
-
-if not options['-decay_times']:
-    t_times = list(totaldata[0][0].index)
-else:
-    o_times = [1.0]
-    for time in options['-decay_times']:
-        if time in list(totaldata[0][0].index) and time not in o_times:
-            o_times.append(time)
-    t_times = o_times
-MCNPACAB.summary_table_gen(totaldata, tally0, t_times=t_times)
