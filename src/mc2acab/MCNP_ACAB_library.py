@@ -523,7 +523,7 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
     apypas_in = np.load(infile, allow_pickle=True)
     cells = [int(x) for x in apypas_in['cell']]
     if in_cell is None or in_cell is []:
-        in_cell = input(f'{cells} \nPlease type cells of interest(default: All): ').replace(',',' ').split()
+        in_cell = input(f'{cells} \nPlease type cells of interest (default: All): ').replace(',',' ').split()
         if in_cell in [['All'],['all']] or not in_cell:
             in_cell = cells
         else:
@@ -575,6 +575,7 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
 #   Let's write the SDEF file
     for t, time_it in enumerate(in_times):
         cell_str = '_'.join([f'{c_it}' for c_it in in_cell])
+        backup_previous(f'SDEF_cell{cell_str}_{__display_time(time_it)}.i')
         with open(f'SDEF_cell{cell_str}_{__display_time(time_it)}.i','w') as output_SDEF:
             output_SDEF.write('c =================================================='
                               '========================= \nc =================='
