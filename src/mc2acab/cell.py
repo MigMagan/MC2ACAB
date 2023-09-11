@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 # coding: utf-8
 import re
-from . import MCNP_outparser
-# from pylab import *
+from mc2acab import MCNP_outparser
 
 def __is_number(s):
     "Internal to check if a token is a number"
