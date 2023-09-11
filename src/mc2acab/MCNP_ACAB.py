@@ -93,6 +93,16 @@ options = {
     '-id_Egroup': 'vitJ+',
 }
 def __parse_args(reqs, options, args):
+    if os.path.isfile('logfile.txt'):
+        with open('logfile.txt',"r", encoding='utf-8') as infile:
+            line0 = infile.readlines()[0].split()
+        reqs['-part'] = line0[0].split(':')[-1]
+        reqs['-outpfile'] = line0[1].split(':')[-1]
+        reqs['-tally_num'] = int(line0[2].split(':')[-1])
+        reqs['-st_units'] = int(line0[3].split(':')[-1])
+        reqs['-st'] = float(line0[4].split(':')[-1])
+        reqs['-irr_time'] = float(line0[5].split(':')[-1])
+        options['-sce_file'] = line0[6].split(':')[-1]
     for arg in args:
         if  arg == '-np' and reqs['-part'] == None:
             reqs['-part'] = 'np'
@@ -159,6 +169,9 @@ def __parse_args(reqs, options, args):
                                   ' is not here \nEnter outp file name: ')
     if reqs['-st_units'] == '2':
         reqs['-st'] *= 6.24E15
+    if options['-sce_file']:
+        print('There are a neutron activacion scenario, irradiation_time not required, just enter 1')
+        reqs['-irr_time'] = 1
     if None in reqs.values():
         raise ValueError('Warning!!! input incomplete, further information required:')
     if not options['-sce_file'] and options['-decay_times']:
