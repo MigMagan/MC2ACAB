@@ -617,10 +617,10 @@ def apypa2sdef(in_cell=None, in_times=None,  infile='summary_apypas.npy'):
                                               range(0,len(func_str), 8)]))
             EE_str = [f'{g_it:8.3f}' for g_it in EEarray]
             for i, n_func in enumerate(func_str):
-                output_SDEF.write(f'\nSI{n_func} ')
+                output_SDEF.write(f'\nSI{n_func}  0 ')
                 output_SDEF.write('\n     '.join([' '.join(EE_str[i:i+8]) for i in
                                                   range(0,len(EE_str), 8)]))
-                output_SDEF.write(f'\nSP{n_func}  ')
+                output_SDEF.write(f'\nSP{n_func}  0 ')
                 spectra_str = [f'{g_it:8.3e}' for g_it in gamma_spectra[i,t]]
                 output_SDEF.write('\n      '.join([' '.join(spectra_str[i:i+8]) for i in
                                                    range(0,len(spectra_str), 8)]))
