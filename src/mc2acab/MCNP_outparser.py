@@ -35,9 +35,8 @@ def line_parser(line):
     "Take a MCNP input line, and return its tokens, removing comments"
     tokens = []
     if line[0] not in ["c","C",]:
+        line = re.split("&|\$", line)[0]  # remove inline comments
         for token in re.split(' +|=|\n', line):
-            if token in ["&", "$"]:
-                break
             tokens.append(token) # comment
     return tokens
 
