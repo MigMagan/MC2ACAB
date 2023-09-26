@@ -103,7 +103,10 @@ def oget(infile, number):
     material = Mat(number)
     m_info = [m for m in m_info if m != '']
     for i in range(0, len(m_info), 2):
-        N.append(int(m_info[i].split(".")[0]))
+        zaid = m_info[i].split(".")[0]
+        if not is_number(zaid):
+            continue # this should discard XLIB = .lib cards
+        N.append(int(zaid))
         M.append(float(m_info[i+1]))
     material.zaid = N
     material.frac = M
