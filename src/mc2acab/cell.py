@@ -90,6 +90,9 @@ def ogetall(infile):
     cellist = []
     nlines = []  # List of lines where a line is defined
     for i, lines in enumerate(inp[1:]):
+        if re.match("read file", lines, flags=re.IGNORECASE) is not None:
+            inp.pop(i+1)  # remove read file lines
+    for i, lines in enumerate(inp[1:]):
         tokens = MCNP_outparser.line_parser(lines)
         if not tokens:
             continue
