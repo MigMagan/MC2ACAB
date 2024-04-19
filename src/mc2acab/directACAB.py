@@ -100,7 +100,10 @@ def get_mat(mat_ID, mat_file):
             tokens = MCNP_outparser.line_parser(line)
             m_info.extend(tokens)
             init_M += 1
-            line = inputlines[init_M]
+            try:
+                line = inputlines[init_M]
+            except:
+                break
     mat_i = material.Mat(mat_ID)
     m_info = [m for m in m_info if m != '']
     for i in range(0, len(m_info), 2):
