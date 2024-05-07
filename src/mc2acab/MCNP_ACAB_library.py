@@ -509,7 +509,7 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
                 totalsT = totalsT.drop(columns = time_i)
         totals = totalsT.T
         totals = totals.round(3)
-        totals = totals.applymap('{:.3e}'.format)
+        totals = totals.map('{:.3e}'.format)
         backup_previous('summary_ACAB_{tally.cells[i]}.csv')
         if save == True:
             totals.to_csv(f'summary_ACAB_{tally.cells[i]}.csv',sep='\t',encoding='utf-8')

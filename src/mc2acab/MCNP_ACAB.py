@@ -8,10 +8,10 @@
 
 import sys
 import os
-import MCNP_ACAB_library as MCNPACAB
-import material
+import mc2acab.MCNP_ACAB_library as MCNPACAB
+import mc2acab.material as material
 from multiprocessing import Pool
-import cell as cel
+import mc2acab.cell as cel
 import numpy as np
 import tally as tal
 
