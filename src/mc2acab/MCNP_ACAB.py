@@ -195,7 +195,11 @@ except Exception as e:
 # cmatrix = MCNPACAB.comp_matrix(tally0, Passive_sector)
 if MCNPACAB.check_utility('summary_apypas.npy'):
     MCNPACAB.backup_previous('logfile.txt')
-    ncel = [int(cell0) for cell0 in (tally0.cells)]
+    try:
+        ncel = [int(cell0) for cell0 in (tally0.cells)]
+    except:
+        ncel = [input("complex cell found, please insert a cel number for material composition:")]
+    tally0.cells=ncel
     print('Obtained cell numbers')
     vol0 = tally0.mass
     irr_cell = [cel.oget(reqs['-outpfile'],ncell_i) for ncell_i in ncel]
