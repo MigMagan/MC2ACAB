@@ -124,6 +124,8 @@ def __parse_args(reqs, options, args):
             reqs['-irr_time'] = float(arg.split('=')[1]) * 3600
         elif '-normal_flux' in arg:
             options['-normal_flux'] = True
+        elif arg.startswith('-save='):
+            options['-save'] = arg.split('=')[1]
         elif arg.startswith('-sce_file='):
             options['-sce_file'] = arg.split('=')[1]
             while not os.path.exists(options['-sce_file']):
