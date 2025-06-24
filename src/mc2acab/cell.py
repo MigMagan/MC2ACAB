@@ -84,6 +84,39 @@ def oget(infile,n):
         return None
     return __parse_cell(inp[sline:eline])
 
+def _table60(infile):
+    '''confirm if infile has table 60'''
+    with open(infile, 'r', encoding='utf-8') as inp_file:
+        if 'print table 60' in inp_file.read():
+            return True
+        else:
+            return False
+
+def _find_table60(infile):
+    table60 = []
+    dentrotabla = False
+    with open(infile, 'r', encoding='utf-8') as inp_file:
+        for linea in inp_file:
+            if 'print table 60' in linea:
+                dentrotabla = True
+                continue
+            if 'total' in linea and dentrotabla:
+                break
+            if dentrotabla:
+                table60.append(linea)
+    return table60
+
+def _read_table60(cel, table):
+    ''' Read table 60 for specific cell to get all useful info'''
+    for line in table:
+        if len(line.split()) > 0 and str(cel.ncell) == line.split()[1]:
+            cel.mat = float(line.split()[2])
+            if cel.density < 0:
+                cel.density = float(line.split()[4])*-1  # keep negative as readed
+            cel.volume = float(line.split()[5])
+            break
+    return cel
+
 def ogetall(infile):
     """ Get an array of all cells of MCNP output infile """
     inp = MCNP_outparser.input_finder(infile)
@@ -105,4 +138,9 @@ def ogetall(infile):
     for i, nline in enumerate(nlines[:-1]):  # To exclude the line that marks end of cell definition
         cel = __parse_cell(inp[nline:nlines[i+1]])
         cellist.append(cel)
+    if _table60(infile):
+        table60 = _find_table60(infile)
+        print('Table 60 readed')
+        for cel in cellist:
+            cel = _read_table60(cel, table60)
     return cellist
