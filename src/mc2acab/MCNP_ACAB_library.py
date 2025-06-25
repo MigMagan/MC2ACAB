@@ -501,8 +501,10 @@ def summary_table_gen(totaldata_ACAB,tally,**kwargs):
             if isinstance(panda,pd.DataFrame):
                 if 'Total' in panda.columns:
                     totals[f'Total_{panda.columns.name}'] = panda['Total']
-                else:
+                elif 'Total' in panda.T.columns:
                     totals[f'Total_{panda.columns.name}'] = panda.T['Total']
+                else:
+                    continue
         totalsT = totals.T
         for time_i in totalsT.columns:
             if time_i not in t_times:
