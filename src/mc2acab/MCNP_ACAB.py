@@ -8,10 +8,10 @@
 
 import sys
 import os
-import MCNP_ACAB_library as MCNPACAB
-import material
+import mc2acab.MCNP_ACAB_library as MCNPACAB
+import mc2acab.material as material
 from multiprocessing import Pool
-import cell as cel
+import mc2acab.cell as cel
 import numpy as np
 import tally as tal
 
@@ -124,6 +124,8 @@ def __parse_args(reqs, options, args):
             reqs['-irr_time'] = float(arg.split('=')[1]) * 3600
         elif '-normal_flux' in arg:
             options['-normal_flux'] = True
+        elif arg.startswith('-save='):
+            options['-save'] = arg.split('=')[1]
         elif arg.startswith('-sce_file='):
             options['-sce_file'] = arg.split('=')[1]
             while not os.path.exists(options['-sce_file']):
@@ -195,7 +197,11 @@ except Exception as e:
 # cmatrix = MCNPACAB.comp_matrix(tally0, Passive_sector)
 if MCNPACAB.check_utility('summary_apypas.npy'):
     MCNPACAB.backup_previous('logfile.txt')
-    ncel = [int(cell0) for cell0 in (tally0.cells)]
+    try:
+        ncel = [int(cell0) for cell0 in (tally0.cells)]
+    except:
+        ncel = [input("complex cell found, please insert a cel number for material composition:")]
+    tally0.cells=ncel
     print('Obtained cell numbers')
     vol0 = tally0.mass
     irr_cell = [cel.oget(reqs['-outpfile'],ncell_i) for ncell_i in ncel]
